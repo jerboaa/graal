@@ -111,7 +111,7 @@ final class Target_java_nio_DirectByteBuffer {
 
     @Alias
     @TargetElement(onlyWith = JDK14OrLater.class) //
-    protected Target_java_nio_DirectByteBuffer(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
+    protected Target_java_nio_DirectByteBuffer(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, jdk.internal.access.foreign.MemorySegmentProxy segment) {
     }
 }
 
@@ -125,7 +125,7 @@ final class Target_java_nio_DirectByteBufferR {
 
     @Alias
     @TargetElement(onlyWith = JDK14OrLater.class) //
-    protected Target_java_nio_DirectByteBufferR(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
+    protected Target_java_nio_DirectByteBufferR(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, jdk.internal.access.foreign.MemorySegmentProxy segment) {
     }
 }
 

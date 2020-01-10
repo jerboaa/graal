@@ -50,21 +50,14 @@ final class Target_sun_nio_ch_Util {
     @Substitute
     @TargetElement(onlyWith = JDK14OrLater.class) //
     static Target_java_nio_DirectByteBufferR newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return new Target_java_nio_DirectByteBufferR(size, addr, fd, unmapper, isSync);
+        return new Target_java_nio_DirectByteBufferR(size, addr, fd, unmapper, isSync, null);
     }
 }
 
-@TargetClass(java.nio.channels.spi.SelectorProvider.class)
-final class Target_java_nio_channels_spi_SelectorProvider {
-
-    @Alias//
-    static SelectorProvider provider;
-
-    @Substitute
-    static SelectorProvider provider() {
-        VMError.guarantee(provider != null, "java.nio.channels.spi.SelectorProvider.provider must be initialized during image generation");
-        return provider;
-    }
+@TargetClass(value = java.nio.channels.spi.SelectorProvider.class, innerClass="Holder")
+final class Target_java_nio_channels_spi_SelectorProvider_Holder {
+    @Alias
+    static SelectorProvider INSTANCE;
 
     static {
         /*
@@ -78,6 +71,17 @@ final class Target_java_nio_channels_spi_SelectorProvider {
         SelectorProvider result = java.nio.channels.spi.SelectorProvider.provider();
         assert result != null;
     }
+}
+
+@TargetClass(java.nio.channels.spi.SelectorProvider.class)
+final class Target_java_nio_channels_spi_SelectorProvider {
+
+    @Substitute
+    static SelectorProvider provider() {
+        VMError.guarantee(Target_java_nio_channels_spi_SelectorProvider_Holder.INSTANCE != null, "java.nio.channels.spi.SelectorProvider.provider must be initialized during image generation");
+        return Target_java_nio_channels_spi_SelectorProvider_Holder.INSTANCE;
+    }
+
 }
 
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})

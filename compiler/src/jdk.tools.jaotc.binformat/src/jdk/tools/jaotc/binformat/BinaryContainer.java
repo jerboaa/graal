@@ -336,7 +336,6 @@ public final class BinaryContainer implements SymbolTable {
         boolean[] booleanFlags = { graalHotSpotVMConfig.cAssertions, // Debug VM
                                    graalHotSpotVMConfig.useCompressedOops,
                                    graalHotSpotVMConfig.useCompressedClassPointers,
-                                   graalHotSpotVMConfig.compactFields,
                                    graalHotSpotVMConfig.useTLAB,
                                    graalHotSpotVMConfig.useBiasedLocking,
                                    TieredAOT.getValue(graalOptions),
@@ -348,7 +347,6 @@ public final class BinaryContainer implements SymbolTable {
         int[] intFlags         = { graalHotSpotVMConfig.getOopEncoding().getShift(),
                                    graalHotSpotVMConfig.getKlassEncoding().getShift(),
                                    graalHotSpotVMConfig.contendedPaddingWidth,
-                                   graalHotSpotVMConfig.fieldsAllocationStyle,
                                    1 << graalHotSpotVMConfig.logMinObjAlignment(),
                                    graalHotSpotVMConfig.codeSegmentSize,
                                    gc

@@ -63,6 +63,11 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
 
     @Override
     public long getTotalPhysicalMemorySize() {
+        return getTotalMemorySize();
+    }
+
+    @Override
+    public long getTotalMemorySize() {
         return PhysicalMemory.size().rawValue();
     }
 
@@ -95,11 +100,21 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
 
     @Override
     public long getFreePhysicalMemorySize() {
+        return getFreeMemorySize();
+    }
+
+    @Override
+    public long getFreeMemorySize() {
         throw VMError.unsupportedFeature(MSG);
     }
 
     @Override
     public double getSystemCpuLoad() {
+        return getCpuLoad();
+    }
+
+    @Override
+    public double getCpuLoad() {
         throw VMError.unsupportedFeature(MSG);
     }
 
