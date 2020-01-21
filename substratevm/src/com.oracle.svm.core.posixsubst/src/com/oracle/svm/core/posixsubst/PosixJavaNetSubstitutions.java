@@ -1548,7 +1548,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
 final class Target_java_net_DatagramSocket {
 
     @Substitute
-    private void checkOldImpl() {
+    private void checkOldImpl(java.net.DatagramSocketImpl impl) {
         // it calls java.net.PlainDatagramSocketImpl.peekData(DatagramPacket) which is unimplemented
     }
 
