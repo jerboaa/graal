@@ -37,17 +37,11 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(java.nio.channels.spi.SelectorProvider.class)
-final class Target_java_nio_channels_spi_SelectorProvider {
+@TargetClass(value = java.nio.channels.spi.SelectorProvider.class, innerClass="Holder")
+final class Target_java_nio_channels_spi_SelectorProvider_Holder {
 
     @Alias//
-    static SelectorProvider provider;
-
-    @Substitute
-    static SelectorProvider provider() {
-        VMError.guarantee(provider != null, "java.nio.channels.spi.SelectorProvider.provider must be initialized during image generation");
-        return provider;
-    }
+    static SelectorProvider INSTANCE;
 
     static {
         /*
@@ -61,6 +55,17 @@ final class Target_java_nio_channels_spi_SelectorProvider {
         SelectorProvider result = java.nio.channels.spi.SelectorProvider.provider();
         assert result != null;
     }
+}
+
+@TargetClass(java.nio.channels.spi.SelectorProvider.class)
+final class Target_java_nio_channels_spi_SelectorProvider {
+
+    @Substitute
+    static SelectorProvider provider() {
+        VMError.guarantee(Target_java_nio_channels_spi_SelectorProvider_Holder.INSTANCE != null, "java.nio.channels.spi.SelectorProvider.provider must be initialized during image generation");
+        return Target_java_nio_channels_spi_SelectorProvider_Holder.INSTANCE;
+    }
+
 }
 
 @Platforms({DeprecatedPlatform.LINUX_SUBSTITUTION.class, DeprecatedPlatform.DARWIN_SUBSTITUTION.class})
