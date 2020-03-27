@@ -28,7 +28,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 
 /**
@@ -41,6 +43,20 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 @TargetClass(className = "jdk.internal.util.StaticProperty", onlyWith = JDK11OrLater.class)
 @SuppressWarnings("unused")
 final class Target_jdk_internal_util_StaticProperty {
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public static String sunBootLibraryPath() {
+        /* Native images do not have a boot lib path. */
+        return null;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK15OrLater.class)
+    public static String javaLibraryPath() {
+        /* Native images do not have a java lib path. */
+        return null;
+    }
 
     @Substitute
     private static String javaHome() {

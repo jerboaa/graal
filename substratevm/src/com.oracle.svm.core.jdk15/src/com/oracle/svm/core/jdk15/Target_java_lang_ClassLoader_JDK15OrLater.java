@@ -22,22 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk15;
 
 import java.io.ByteArrayInputStream;
-import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -49,101 +46,17 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.Target_java_lang_AssertionStatusDirectives;
+import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath")
+@TargetClass(value = ClassLoader.class, onlyWith = JDK15OrLater.class)
 @SuppressWarnings("static-method")
-final class Target_jdk_internal_loader_URLClassPath {
-
-    /* Reset fields that can store a Zip file via sun.misc.URLClassPath$JarLoader.jar. */
-
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ArrayList.class)//
-    private ArrayList<?> loaders;
-
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
-    private HashMap<String, ?> lmap;
-
-    /* The original locations of the .jar files are no longer available at run time. */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ArrayList.class)//
-    private ArrayList<URL> path;
-
-    /*
-     * We are defensive and also handle private native methods by marking them as deleted. If they
-     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
-     * linking error.
-     */
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native URL[] getLookupCacheURLs(ClassLoader loader);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native int[] getLookupCacheForClassLoader(ClassLoader loader, String name);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native boolean knownToNotExist0(ClassLoader loader, String className);
-}
-
-@TargetClass(URLClassLoader.class)
-@SuppressWarnings("static-method")
-final class Target_java_net_URLClassLoader {
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = WeakHashMap.class)//
-    private WeakHashMap<Closeable, Void> closeables;
-
-    @Substitute
-    private InputStream getResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    protected Class<?> findClass(final String name) {
-        throw VMError.unsupportedFeature("Loading bytecodes.");
-    }
-}
-
-@TargetClass(className = "jdk.internal.loader.BuiltinClassLoader", onlyWith = JDK11OrLater.class)
-@SuppressWarnings("static-method")
-final class Target_jdk_internal_loader_BuiltinClassLoader {
-
-    @Substitute
-    public URL findResource(@SuppressWarnings("unused") String mn, String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : Resources.createURL(name, arr.get(0));
-    }
-
-    @Substitute
-    public URL findResource(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : Resources.createURL(name, arr.get(0));
-    }
-
-    @Substitute
-    public InputStream findResourceAsStream(@SuppressWarnings("unused") String mn, String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
-    }
-
-    @Substitute
-    public Enumeration<URL> findResources(String name) {
-        List<byte[]> arr = Resources.get(name);
-        if (arr == null) {
-            return Collections.emptyEnumeration();
-        }
-        List<URL> res = new ArrayList<>(arr.size());
-        for (byte[] data : arr) {
-            res.add(Resources.createURL(name, data));
-        }
-        return Collections.enumeration(res);
-    }
-}
-
-@TargetClass(value = ClassLoader.class, onlyWith = JDK14OrEarlier.class)
-@SuppressWarnings("static-method")
-final class Target_java_lang_ClassLoader {
+final class Target_java_lang_ClassLoader_JDK15OrLater {
 
     /**
      * This field can be safely deleted, but that would require substituting the entire constructor
@@ -159,9 +72,6 @@ final class Target_java_lang_ClassLoader {
      * Reset ClassLoader.packages; accessing packages via ClassLoader is currently not supported and
      * the SystemClassLoader may capture some hosted packages.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
-    @TargetElement(name = "packages", onlyWith = JDK8OrEarlier.class)//
-    private HashMap<String, Package> packagesJDK8;
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @TargetElement(name = "packages", onlyWith = JDK11OrLater.class)//
     private ConcurrentHashMap<String, Package> packagesJDK11;
@@ -220,8 +130,16 @@ final class Target_java_lang_ClassLoader {
 
     @Substitute
     @SuppressWarnings("unused")
-    static void loadLibrary(Class<?> fromClass, String name, boolean isAbsolute) {
-        NativeLibrarySupport.singleton().loadLibrary(name, isAbsolute);
+    static Target_jdk_internal_loader_NativeLibrary loadLibrary(Class<?> fromClass, String name) {
+        NativeLibrarySupport.singleton().loadLibrary(name, false);
+        return null;
+    }
+
+    @Substitute
+    @SuppressWarnings("unused")
+    static Target_jdk_internal_loader_NativeLibrary loadLibrary(Class<?> fromClass, File file) {
+        NativeLibrarySupport.singleton().loadLibrary(file);
+        return null;
     }
 
     @Substitute
@@ -344,22 +262,6 @@ final class Target_java_lang_ClassLoader {
     private static native void registerNatives();
 
     @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native Class<?> defineClass0(String name, byte[] b, int off, int len, ProtectionDomain pd);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native Class<?> defineClass1(String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native Class<?> defineClass2(String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native void resolveClass0(Class<?> c);
-
-    @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
     private static native Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
 
@@ -371,46 +273,37 @@ final class Target_java_lang_ClassLoader {
     private native Class<?> findBootstrapClass(String name);
 
     @Delete
-    private static native String findBuiltinLib(String name);
-
-    @Delete
     private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();
 }
 
-@TargetClass(value = ClassLoader.class, innerClass = "NativeLibrary", onlyWith = JDK14OrEarlier.class)
-final class Target_java_lang_ClassLoader_NativeLibrary {
+@TargetClass(className = "jdk.internal.loader.NativeLibraries", onlyWith = JDK15OrLater.class)
+final class Target_jdk_internal_loader_NativeLibraries {
 
-    /*
-     * We are defensive and also handle private native methods by marking them as deleted. If they
-     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
-     * linking error.
-     */
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native void load(String name, boolean isBuiltin);
+    @Substitute
+    @SuppressWarnings("static-method")
+    public Target_jdk_internal_loader_NativeLibrary loadLibrary(Class<?> fromClass, File file) {
+        NativeLibrarySupport.singleton().loadLibrary(file);
+        return null;
+    }
 
     @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native long find(String name);
+    private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl impl, String name, boolean isBuiltin, boolean isJNI);
 
     @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native void unload(String name, boolean isBuiltin);
+    private static native void unload(String name, boolean isBuiltin, boolean isJNI, long handle);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private native boolean load0(String name, boolean isBuiltin);
+    private static native String findBuiltinLib(String name);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private native long findEntry(String name);
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private static native void unload(String name, boolean isBuiltin, long handle);
+    private static native long findEntry0(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl lib, String name);
 }
 
-@TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //
-final class Target_java_lang_NamedPackage {
+@TargetClass(className = "jdk.internal.loader.NativeLibrary", onlyWith = JDK15OrLater.class)
+@SuppressWarnings("unused")
+final class Target_jdk_internal_loader_NativeLibrary {
+}
+
+@TargetClass(className = "jdk.internal.loader.NativeLibraries", innerClass = "NativeLibraryImpl", onlyWith = JDK15OrLater.class)
+final class Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl {
 }

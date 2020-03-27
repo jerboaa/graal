@@ -32,6 +32,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -123,12 +124,22 @@ public final class NativeLibrarySupport {
             if (loadLibrary0(libpath, false)) {
                 return;
             }
-            File altpath = Target_java_lang_ClassLoaderHelper.mapAlternativeName(libpath);
-            if (altpath != null && loadLibrary0(libpath, false)) {
+            File altpath = NativeLibraryMapper.mapAlternativeName(libpath);
+            if (altpath != null && loadLibrary0(altpath, false)) {
                 return;
             }
         }
         throw new UnsatisfiedLinkError("no " + name + " in java.library.path");
+    }
+
+    public void loadLibrary(File file) {
+        if (loadLibrary0(file, false)) {
+            return;
+        }
+        if (loadLibrary0(file, true)) {
+            return;
+        }
+        throw new UnsatisfiedLinkError("no " + file + " in java.library.path");
     }
 
     private boolean loadLibrary0(File file, boolean asBuiltin) {

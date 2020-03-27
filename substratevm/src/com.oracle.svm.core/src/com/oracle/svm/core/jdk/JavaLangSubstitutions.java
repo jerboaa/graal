@@ -128,10 +128,20 @@ final class Target_java_lang_Object {
     }
 }
 
-@TargetClass(className = "java.lang.ClassLoaderHelper")
+@TargetClass(className = "java.lang.ClassLoaderHelper", onlyWith = JDK14OrEarlier.class)
 final class Target_java_lang_ClassLoaderHelper {
-    @Alias
-    static native File mapAlternativeName(File lib);
+    @Substitute
+    static File mapAlternativeName(File lib) {
+        return NativeLibraryMapper.mapAlternativeName(lib);
+    }
+}
+
+@TargetClass(className = "jdk.internal.loader.ClassLoaderHelper", onlyWith = JDK15OrLater.class)
+final class Target_java_lang_ClassLoaderHelperJDK15 {
+    @Substitute
+    static File mapAlternativeName(File lib) {
+        return NativeLibraryMapper.mapAlternativeName(lib);
+    }
 }
 
 @TargetClass(java.lang.Enum.class)
