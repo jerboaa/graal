@@ -51,6 +51,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.security.action.GetPropertyAction;
 
 public final class FileSystemProviderSupport {
 
@@ -214,10 +215,21 @@ final class Target_sun_nio_fs_UnixFileSystem {
     boolean injectedNeedToResolveAgainstDefaultDirectory;
     @Inject @RecomputeFieldValue(kind = Kind.Reset)//
     Target_sun_nio_fs_UnixPath injectedRootDirectory;
+}
+
+@TargetClass(className = "sun.nio.fs.UnixNativeDispatcher")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+final class Target_sun_nio_fs_UnixNativeDispatcher {
 
     @Alias
-    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    native void originalConstructor(Target_sun_nio_fs_UnixFileSystemProvider p, String dir);
+    static native byte[] getcwd();
+
+}
+
+@TargetClass(className = "sun.nio.fs.Util")
+final class Target_sun_nio_fs_Util {
+    @Alias
+    static native byte[] toBytes(String s);
 }
 
 @TargetClass(className = "sun.nio.fs.UnixFileSystemProvider")
@@ -228,6 +240,22 @@ final class Target_sun_nio_fs_UnixFileSystemProvider {
 @TargetClass(className = "sun.nio.fs.UnixPath")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_nio_fs_UnixPath {
+
+    @Substitute
+    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
+    Target_sun_nio_fs_UnixPath(Target_sun_nio_fs_UnixFileSystem fs, String s) {
+        originalConstructor(fs, encode(fs, normalizeAndCheck(s)));
+    }
+
+    @Alias
+    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
+    private native void originalConstructor(Target_sun_nio_fs_UnixFileSystem fs, byte[] path);
+
+    @Alias
+    native static String normalizeAndCheck(String input);
+
+    @Alias
+    private native static byte[] encode(Target_sun_nio_fs_UnixFileSystem fs, String input);
 }
 
 class NeedsReinitializationProvider implements RecomputeFieldValue.CustomFieldValueComputer {
@@ -306,20 +334,58 @@ class UnixFileSystemAccessors {
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_IN_REINITIALIZATION;
 
         /*
-         * We invoke the original constructor of UnixFileSystem. This overwrites the provider field
-         * with the same value it is already set to, so this is harmless. All other field writes are
-         * redirected to the set-accessors of this class and write the injected fields.
+         * We call a copied and modified version of the original constructor code of UnixFileSystem.
+         * When calling an aliased non-private constructor method instead this will generate
+         * invokevirtual bytecode instructions for a method named <init>, which isn't legal
+         * (invokespecial would need to be used instead). This can be reproduced by using a debug
+         * base JDK to build with. The JVM would assert if we did that.
          *
-         * Note that the `System.getProperty("user.dir")` value is always used when re-initializing
-         * a UnixFileSystem, which is not the case with the WindowsFileSystem (JDK-8066709).
+         * Since we cannot call a private method from outside the original class without adding a
+         * new method to the JDK class, this copy-and-modify constructor code is a work-around.
          */
-        that.originalConstructor(that.provider, System.getProperty("user.dir"));
+        copyAndModifyConstructorCode(that, System.getProperty("user.dir"));
 
         /*
          * Now the object is completely re-initialized and can be used by any thread without
          * entering the synchronized slow path again.
          */
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_REINITIALIZED;
+    }
+
+    /*
+     * This is a copy of the two-argument constructor code from JDK 11's sun.nio.fs.UnixFileSystem
+     * class. If any of the code there changes this code needs to change accordingly. Note: This
+     * code directly sets injected fields over their originals.
+     */
+    private static void copyAndModifyConstructorCode(Target_sun_nio_fs_UnixFileSystem that, String dir) throws RuntimeException {
+        that.injectedDefaultDirectory = Target_sun_nio_fs_Util.toBytes(Target_sun_nio_fs_UnixPath.normalizeAndCheck(dir));
+        if (that.injectedDefaultDirectory[0] != '/') {
+            throw new RuntimeException("default directory must be absolute");
+        }
+
+        // if process-wide chdir is allowed or default directory is not the
+        // process working directory then paths must be resolved against the
+        // default directory.
+        String propValue = GetPropertyAction
+                        .privilegedGetProperty("sun.nio.fs.chdirAllowed", "false");
+        boolean chdirAllowed = propValue.isEmpty() ? true : Boolean.parseBoolean(propValue);
+        if (chdirAllowed) {
+            that.injectedNeedToResolveAgainstDefaultDirectory = true;
+        } else {
+            byte[] cwd = Target_sun_nio_fs_UnixNativeDispatcher.getcwd();
+            boolean defaultIsCwd = (cwd.length == that.injectedDefaultDirectory.length);
+            if (defaultIsCwd) {
+                for (int i = 0; i < cwd.length; i++) {
+                    if (cwd[i] != that.injectedDefaultDirectory[i]) {
+                        defaultIsCwd = false;
+                        break;
+                    }
+                }
+            }
+            that.injectedNeedToResolveAgainstDefaultDirectory = !defaultIsCwd;
+        }
+        // the root directory
+        that.injectedRootDirectory = new Target_sun_nio_fs_UnixPath(that, "/");
     }
 }
 
