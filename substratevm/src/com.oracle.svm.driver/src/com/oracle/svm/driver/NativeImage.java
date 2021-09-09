@@ -50,6 +50,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -1301,7 +1302,14 @@ public class NativeImage {
     protected static String createVMInvocationArgumentFile(List<String> arguments) {
         try {
             Path argsFile = Files.createTempFile("vminvocation", ".args");
-            String joinedOptions = String.join("\n", arguments);
+            StringJoiner joiner = new StringJoiner("\n");
+            for (String arg : arguments) {
+                // Options in @argfile need to be properly quoted as
+                // this relies on the JDK's @argfile parsing when the
+                // native image generator is being launched.
+                joiner.add(SubstrateUtil.quoteShellArg(arg));
+            }
+            String joinedOptions = joiner.toString();
             Files.write(argsFile, joinedOptions.getBytes());
             argsFile.toFile().deleteOnExit();
             return "@" + argsFile;
