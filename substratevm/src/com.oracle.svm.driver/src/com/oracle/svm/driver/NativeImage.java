@@ -106,8 +106,9 @@ public class NativeImage {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
+    private static final String DEFAULT_COMMUNITY_EDITION = "CE";
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
-    static final String graalvmConfig = System.getProperty("org.graalvm.config", "CE");
+    static final String graalvmConfig = System.getProperty("org.graalvm.config", DEFAULT_COMMUNITY_EDITION);
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
@@ -484,6 +485,8 @@ public class NativeImage {
             if (useJVMCINativeLibrary) {
                 builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
             } else {
+                // some JVMs need this unlocking
+                builderJavaArgs.add("-XX:+UnlockExperimentalVMOptions");
                 builderJavaArgs.add("-XX:-UseJVMCICompiler");
             }
 
@@ -537,7 +540,14 @@ public class NativeImage {
          * @return entries for the --upgrade-module-path of the image builder
          */
         public List<Path> getBuilderUpgradeModulePath() {
-            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal", "graal-management");
+            List<Path> result = new ArrayList<>();
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal", "graal-management"));
+            // Non-jlinked JDKs need to upgrade the module path
+            if (!DEFAULT_COMMUNITY_EDITION.equals(graalvmConfig)) {
+                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "enterprise-graal"));
+                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
+            }
+            return result;
         }
 
         /**
