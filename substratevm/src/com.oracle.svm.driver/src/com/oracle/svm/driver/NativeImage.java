@@ -1307,7 +1307,14 @@ public class NativeImage {
                 // Options in @argfile need to be properly quoted as
                 // this relies on the JDK's @argfile parsing when the
                 // native image generator is being launched.
-                joiner.add(SubstrateUtil.quoteShellArg(arg));
+                String quoted = SubstrateUtil.quoteShellArg(arg);
+                // @argfile rules: backslashes don't need to be escaped if the
+                // option they are used in isn't quoted, but if it is, then
+                // they need to be escaped.
+                if(quoted.startsWith("'")) {
+                    quoted = quoted.replace("\\", "\\\\");
+                }
+                joiner.add(quoted);
             }
             String joinedOptions = joiner.toString();
             Files.write(argsFile, joinedOptions.getBytes());
