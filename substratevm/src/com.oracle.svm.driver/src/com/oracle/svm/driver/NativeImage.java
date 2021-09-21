@@ -1311,6 +1311,10 @@ public class NativeImage {
             }
             String joinedOptions = joiner.toString();
             Files.write(argsFile, joinedOptions.getBytes());
+            String argContent = new String(Files.readAllBytes(argsFile));
+            System.out.println("------------- content of " + argsFile.toString() + "----------------");
+            System.out.println(argContent);
+            System.out.println("------------- content of " + argsFile.toString() + "----------------");
             argsFile.toFile().deleteOnExit();
             return "@" + argsFile;
         } catch (IOException e) {
