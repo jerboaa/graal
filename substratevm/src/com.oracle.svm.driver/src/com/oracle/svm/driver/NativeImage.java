@@ -997,7 +997,7 @@ public class NativeImage {
         if (config.useJavaModules()) {
             config.getBuilderModulePath().forEach(this::addImageBuilderModulePath);
             String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
-                            .map(p -> canonicalize(p).toString())
+                            .map(p -> shellPath(canonicalize(p)))
                             .collect(Collectors.joining(File.pathSeparator));
             if (!upgradeModulePath.isEmpty()) {
                 addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
@@ -1006,7 +1006,7 @@ public class NativeImage {
             config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
             if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
                 String builderJavaArg = config.getBuilderJVMCIClasspathAppend()
-                                .stream().map(path -> canonicalize(path).toString())
+                                .stream().map(path -> shellPath(canonicalize(path)))
                                 .collect(Collectors.joining(File.pathSeparator, "-Djvmci.class.path.append=", ""));
                 addImageBuilderJavaArgs(builderJavaArg);
             }
@@ -1020,7 +1020,7 @@ public class NativeImage {
 
         String clibrariesPath = (targetPlatform != null) ? targetPlatform : platform;
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
-                        .map(path -> canonicalize(path.resolve(clibrariesPath)).toString())
+                        .map(path -> shellPath(canonicalize(path.resolve(clibrariesPath))))
                         .collect(Collectors.joining(",", oHCLibraryPath, ""));
         addPlainImageBuilderArg(clibrariesBuilderArg);
 
@@ -1236,7 +1236,7 @@ public class NativeImage {
         if (!agentOptions.isEmpty()) {
             args.add("-agentlib:native-image-diagnostics-agent=" + agentOptions);
         }
-        args.add("-javaagent:" + config.getAgentJAR().toAbsolutePath() + (agentOptions.isEmpty() ? "" : "=" + agentOptions));
+        args.add("-javaagent:" + shellPath(config.getAgentJAR()) + (agentOptions.isEmpty() ? "" : "=" + agentOptions));
         return args;
     }
 
@@ -1335,14 +1335,14 @@ public class NativeImage {
         List<String> arguments = new ArrayList<>();
         arguments.addAll(javaArgs);
         if (!bcp.isEmpty()) {
-            arguments.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
+            arguments.add(bcp.stream().map(NativeImage::shellPath).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
 
         if (!cp.isEmpty()) {
-            arguments.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
+            arguments.addAll(Arrays.asList("-cp", cp.stream().map(NativeImage::shellPath).collect(Collectors.joining(File.pathSeparator))));
         }
         if (!mp.isEmpty()) {
-            List<String> strings = Arrays.asList("--module-path", mp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+            List<String> strings = Arrays.asList("--module-path", mp.stream().map(NativeImage::shellPath).collect(Collectors.joining(File.pathSeparator)));
             arguments.addAll(strings);
         }
 
@@ -1405,6 +1405,17 @@ public class NativeImage {
             }
         }
         return exitStatus;
+    }
+
+    // Since path variables get used in @argumenet files and \\ is a not-safe shell
+    // character, be sure to escape backslashes so they can get interpreted correctly
+    // in @argument files when they are quoted. I.e. 'C:\foo\bar' translates to 'C:\\foo\\bar'
+    private static String shellPath(Path path) {
+        String retval = path.toString();
+        if (OS.getCurrent() == OS.WINDOWS) {
+            return retval.replace("\\", "\\\\");
+        }
+        return retval;
     }
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> new NativeImage(config);
