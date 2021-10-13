@@ -37,7 +37,7 @@ public class Timer {
     /** Timer total time in nanoseconds. */
     private long totalTime;
     /** Total VM memory in bytes recorded when the timer is printed. */
-    private long totalMemory;
+    private long totalHeapUsage;
 
     public Timer(String name) {
         this(null, name, true);
@@ -87,9 +87,11 @@ public class Timer {
         } else {
             concurrentPrefix = "";
         }
-        totalMemory = Runtime.getRuntime().totalMemory();
-        double totalMemoryGB = totalMemory / 1024.0 / 1024.0 / 1024.0;
-        System.out.format("%s%12s: %,10.2f ms, %,5.2f GB%n", concurrentPrefix, name, time / 1000000d, totalMemoryGB);
+        long totalHeapCapacity = Runtime.getRuntime().totalMemory();
+        totalHeapUsage = totalHeapCapacity - Runtime.getRuntime().freeMemory();
+        double heapUsageGB = totalHeapUsage / 1024.0 / 1024.0 / 1024.0;
+        double heapCapacityGB = totalHeapCapacity / 1024.0 / 1024.0 / 1024.0;
+        System.out.format("%s%12s: %,10.2f ms, heap (u/c): %,5.2f/%,5.2f GB%n", concurrentPrefix, name, time / 1000000d, heapUsageGB, heapCapacityGB);
     }
 
     public void print() {
@@ -103,7 +105,7 @@ public class Timer {
 
     /** Get total VM memory in bytes. */
     public long getTotalMemory() {
-        return totalMemory;
+        return totalHeapUsage;
     }
 
     public class StopTimer implements AutoCloseable {
