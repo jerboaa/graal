@@ -41,6 +41,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
 
+@AddExports({ "org.graalvm.nativeimage.builder/com.oracle.svm.core.containers" })
 public class CgroupSubsystemFactoryTest {
 
     private static final String MOUNT_INFO_CG2 = "29 23 0:26 / /sys/fs/cgroup rw,nosuid,nodev,noexec,relatime shared:4 - cgroup2 cgroup2 rw,seclabel,nsdelegate,memory_recursiveprot\n" +
