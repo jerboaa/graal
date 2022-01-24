@@ -151,7 +151,7 @@ public final class DynamicHubCompanion {
                             newPublicMethods.toArray(new Method[0]),
                             newDeclaredConstructors.toArray(new Constructor<?>[0]), newPublicConstructors.toArray(new Constructor<?>[0]), hub.rd.nullaryConstructor, hub.rd.declaredPublicFields,
                             newDeclaredPublicMethods.toArray(new Method[0]), hub.rd.declaredClasses, hub.rd.permittedSubclasses, hub.rd.publicClasses, hub.rd.enclosingMethodOrConstructor,
-                            hub.rd.recordComponents);
+                            hub.rd.recordComponents, hub.rd.recordAnnotations, hub.rd.recordAnnotatedType);
         }
         return completeReflectionData;
     }
