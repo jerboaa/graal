@@ -570,8 +570,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          repository: graalvm/mandrel
+          repository: jerboaa/graal
           fetch-depth: 1
+          ref: test_workflow_with_upload
           path: workflow-mandrel
       - uses: actions/download-artifact@v1
         with:

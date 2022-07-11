@@ -62,7 +62,7 @@ on:
 
 jobs:
   delegate:
-    uses: graalvm/mandrel/.github/workflows/base.yml@default
+    uses: jerboaa/graal/.github/workflows/base.yml@test_workflow_with_upload
     with:
       quarkus-version: ${{ github.event.inputs.quarkus-version }}
       quarkus-repo: ${{ github.event.inputs.quarkus-repo }}
