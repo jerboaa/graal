@@ -58,7 +58,7 @@ on:
 
 jobs:
   delegate:
-    uses: graalvm/mandrel/.github/workflows/base-windows.yml@default
+    uses: jerboaa/graal/.github/workflows/base-windows.yml@limit_inputs
     with:
       quarkus-version: ${{ github.event.inputs.quarkus-version }}
       quarkus-repo: ${{ github.event.inputs.quarkus-repo }}
