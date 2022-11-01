@@ -632,6 +632,7 @@ public class ProgressReporter {
         }
         l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
+        recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
         executor.shutdown();
     }
 

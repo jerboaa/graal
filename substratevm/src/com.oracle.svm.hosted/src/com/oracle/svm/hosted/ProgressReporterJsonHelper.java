@@ -192,7 +192,8 @@ class ProgressReporterJsonHelper {
         GC_COUNT("garbage_collection", "count"),
         GC_SECS("garbage_collection", "total_secs"),
         PEAK_RSS("memory", "peak_rss_bytes"),
-        MEMORY_TOTAL("memory", "system_total");
+        MEMORY_TOTAL("memory", "system_total"),
+        TOTAL_SECS(null, "total_secs");
 
         private String bucket;
         private String jsonKey;
