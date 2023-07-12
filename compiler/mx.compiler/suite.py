@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "22.3.3.2",
+  "version" : "22.3.3",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
