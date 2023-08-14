@@ -125,7 +125,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='polyglot',
     launcher_configs=[mx_sdk_vm.LauncherConfig(
         destination='bin/<exe:polyglot>',
-        jar_distributions=['sdk:LAUNCHER_COMMON'],
+        jar_distributions=['sdk:LAUNCHER_COMMON', 'truffle:TRUFFLE_API'],
         main_class='org.graalvm.launcher.PolyglotLauncher',
         build_args=[
             '--features=org.graalvm.launcher.PolyglotLauncherFeature',
@@ -2217,13 +2217,9 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
             if not _jlink_libraries():
                 if mx.is_windows():
-                    extra_jvm_args = ' '.join([extra_jvm_args, r'--upgrade-module-path "%location%\..\..\jvmci\graal.jar"',
-                                               r'--add-modules org.graalvm.polyglot',
-                                               r'--module-path "%location%\..\..\truffle\truffle-api.jar:%location%\..\..\jvmci\polyglot.jar"'])
+                    extra_jvm_args = ' '.join([extra_jvm_args, r'--upgrade-module-path "%location%\..\..\jvmci\graal.jar"'])
                 else:
-                    extra_jvm_args = ' '.join([extra_jvm_args, '--upgrade-module-path "${location}/../../jvmci/graal.jar"',
-                                               '--add-modules org.graalvm.polyglot',
-                                               '--module-path "${location}/../../truffle/truffle-api.jar:${location}/../../jvmci/polyglot.jar"'])
+                    extra_jvm_args = ' '.join([extra_jvm_args, '--upgrade-module-path "${location}/../../jvmci/graal.jar"'])
             return extra_jvm_args
 
         def _get_option_vars():
