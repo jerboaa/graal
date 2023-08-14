@@ -1519,7 +1519,7 @@ public class NativeImage {
         Function<Path, Path> substituteModulePath = useBundle() ? bundleSupport::substituteModulePath : Function.identity();
         List<Path> substitutedImageModulePath = imagemp.stream().map(substituteModulePath).toList();
 
-        Map<String, Path> modules = listModulesFromPath(javaExecutable, Stream.concat(mp.stream(), imagemp.stream()).distinct().toList());
+        Map<String, Path> modules = listModulesFromPath(javaExecutable, javaArgs, Stream.concat(mp.stream(), imagemp.stream()).distinct().toList());
         if (!addModules.isEmpty()) {
 
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
@@ -1689,16 +1689,16 @@ public class NativeImage {
     /**
      * Resolves and lists all modules given a module path.
      *
-     * @see #callListModules(String, List)
+     * @see #callListModules(String, List, List)
      */
-    private Map<String, Path> listModulesFromPath(String javaExecutable, Collection<Path> modulePath) {
+    private Map<String, Path> listModulesFromPath(String javaExecutable, List<String> javaArgs, List<Path> modulePath) {
         if (modulePath.isEmpty() || !config.modulePathBuild) {
             return Map.of();
         }
         String modulePathEntries = modulePath.stream()
                         .map(Path::toString)
                         .collect(Collectors.joining(File.pathSeparator));
-        return callListModules(javaExecutable, List.of("-p", modulePathEntries));
+        return callListModules(javaExecutable, javaArgs, List.of("-p", modulePathEntries));
     }
 
     /**
@@ -1709,11 +1709,12 @@ public class NativeImage {
      * <p>
      * This is a much more robust solution then trying to parse the JDK file structure manually.
      */
-    private static Map<String, Path> callListModules(String javaExecutable, List<String> arguments) {
+    private static Map<String, Path> callListModules(String javaExecutable, List<String> javaArgs, List<String> arguments) {
         Process listModulesProcess = null;
         Map<String, Path> result = new LinkedHashMap<>();
         try {
             var pb = new ProcessBuilder(javaExecutable);
+            pb.command().addAll(javaArgs);
             pb.command().addAll(arguments);
             pb.command().add("--list-modules");
             pb.environment().clear();
