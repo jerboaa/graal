@@ -1743,8 +1743,10 @@ public class NativeImage {
                 String[] splitModuleNameAndVersion = StringUtil.split(splitString[0], "@", 2);
                 Path externalPath = null;
                 if (splitString.length > 1) {
-                    String pathURI = splitString[1]; // url: file://path/to/file
-                    externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
+                    String pathURI = splitString[1].trim(); // url: file://path/to/file
+                    if (pathURI.startsWith("file://")) {
+                        externalPath = Path.of(URI.create(pathURI)).toAbsolutePath();
+                    }
                 }
                 result.put(splitModuleNameAndVersion[0], externalPath);
             }
