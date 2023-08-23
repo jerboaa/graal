@@ -1529,7 +1529,8 @@ public class NativeImage {
         Function<Path, Path> substituteModulePath = useBundle() ? bundleSupport::substituteModulePath : Function.identity();
         List<Path> substitutedImageModulePath = imagemp.stream().map(substituteModulePath).toList();
 
-        Map<String, Path> modules = listModulesFromPath(javaExecutable, javaArgs, Stream.concat(mp.stream(), imagemp.stream()).distinct().toList());
+        List<String> mainClassArg = config.getGeneratorMainClass();
+        Map<String, Path> modules = listModulesFromPath(javaExecutable, javaArgs, mainClassArg, mp.stream().distinct().toList(), imagemp.stream().distinct().toList());
         if (!addModules.isEmpty()) {
 
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
@@ -1699,34 +1700,41 @@ public class NativeImage {
     /**
      * Resolves and lists all modules given a module path.
      *
-     * @see #callListModules(String, List, List)
+     * @see #callListModules(String, List, List, List, List)
      */
-    private Map<String, Path> listModulesFromPath(String javaExecutable, List<String> javaArgs, List<Path> modulePath) {
+    private Map<String, Path> listModulesFromPath(String javaExecutable, List<String> javaArgs, List<String> mainClassArg, List<Path> modulePath, List<Path> imagemp) {
         if (modulePath.isEmpty() || !config.modulePathBuild) {
             return Map.of();
         }
         String modulePathEntries = modulePath.stream()
                         .map(Path::toString)
                         .collect(Collectors.joining(File.pathSeparator));
-        return callListModules(javaExecutable, javaArgs, List.of("-p", modulePathEntries));
+        String imagePathEntries = imagemp.stream()
+                        .map(Path::toString)
+                        .collect(Collectors.joining(File.pathSeparator));
+        List<String> imagempArgs = List.of("-imagemp", imagePathEntries);
+        List<String> modulePathArgs = List.of("--module-path", modulePathEntries);
+        return callListModules(javaExecutable, javaArgs, mainClassArg, imagempArgs, modulePathArgs);
     }
 
     /**
-     * Calls <code>java $arguments --list-modules</code> to list all modules and parse the output.
-     * The output consists of a map with module name as key and {@link Path} to jar file if the
-     * module is not installed as part of the JDK. If the module is installed as part of the
+     * Calls the image generator's <code>--list-modules</code> to list all modules and parses the
+     * output. The output consists of a map with module name as key and {@link Path} to jar file if
+     * the module is not installed as part of the JDK. If the module is installed as part of the
      * jdk/boot-layer then a <code>null</code> path will be returned.
      * <p>
      * This is a much more robust solution then trying to parse the JDK file structure manually.
      */
-    private static Map<String, Path> callListModules(String javaExecutable, List<String> javaArgs, List<String> arguments) {
+    private static Map<String, Path> callListModules(String javaExecutable, List<String> javaArgs, List<String> mainClassArg, List<String> imagempArgs, List<String> modulePathArgs) {
         Process listModulesProcess = null;
         Map<String, Path> result = new LinkedHashMap<>();
         try {
             var pb = new ProcessBuilder(javaExecutable);
             pb.command().addAll(javaArgs);
-            pb.command().addAll(arguments);
-            pb.command().add("--list-modules");
+            pb.command().addAll(modulePathArgs);
+            pb.command().addAll(mainClassArg);
+            pb.command().addAll(imagempArgs);
+            pb.command().add("-H:+ListModules");
             pb.environment().clear();
             listModulesProcess = pb.start();
 
