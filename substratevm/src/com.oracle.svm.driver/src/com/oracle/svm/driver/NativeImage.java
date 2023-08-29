@@ -1530,7 +1530,7 @@ public class NativeImage {
         List<Path> substitutedImageModulePath = imagemp.stream().map(substituteModulePath).toList();
 
         List<String> mainClassArg = config.getGeneratorMainClass();
-        Map<String, Path> modules = listModulesFromPath(javaExecutable, javaArgs, mainClassArg, Stream.concat(mp.stream(), imagemp.stream()).distinct().toList(), imagemp.stream().distinct().toList());
+        Map<String, Path> modules = listModulesFromPath(javaExecutable, javaArgs, mainClassArg, mp.stream().distinct().toList(), imagemp.stream().distinct().toList());
         if (!addModules.isEmpty()) {
 
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
