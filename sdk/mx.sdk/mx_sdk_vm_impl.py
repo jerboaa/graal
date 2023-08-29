@@ -125,7 +125,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='polyglot',
     launcher_configs=[mx_sdk_vm.LauncherConfig(
         destination='bin/<exe:polyglot>',
-        jar_distributions=['sdk:LAUNCHER_COMMON', 'truffle:TRUFFLE_API'],
+        jar_distributions=['sdk:LAUNCHER_COMMON'],
         main_class='org.graalvm.launcher.PolyglotLauncher',
         build_args=[
             '--features=org.graalvm.launcher.PolyglotLauncherFeature',
