@@ -1530,7 +1530,19 @@ public class NativeImage {
         List<Path> substitutedImageModulePath = imagemp.stream().map(substituteModulePath).toList();
 
         List<String> mainClassArg = config.getGeneratorMainClass();
-        Map<String, Path> modules = listModulesFromPath(javaExecutable, javaArgs, mainClassArg, mp.stream().distinct().toList(), imagemp.stream().distinct().toList());
+        /*
+         * We are using the image generator for --list-modules. That cannot handle the same modules
+         * on the module path (--module-path) and image module path (-imagemp). Only pass modules
+         * via the image module path if it isn't already on the module path. Note that the path to
+         * the individual jars might be different between module path and image module path, so we
+         * use the file name for filtering.
+         */
+        Set<Path> imagempForListMods = imagemp.stream().filter(Predicate.not(a -> {
+            return mp.stream().anyMatch(b -> {
+                return a.getFileName().equals(b.getFileName());
+            });
+        })).collect(Collectors.toSet());
+        Map<String, Path> modules = listModulesFromPath(javaExecutable, javaArgs, mainClassArg, mp.stream().distinct().toList(), imagempForListMods.stream().distinct().toList());
         if (!addModules.isEmpty()) {
 
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
@@ -1550,7 +1562,7 @@ public class NativeImage {
             }
         }
 
-        arguments.addAll(config.getGeneratorMainClass());
+        arguments.addAll(mainClassArg);
 
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
@@ -1610,9 +1622,10 @@ public class NativeImage {
             switch (ExitStatus.of(exitStatusCode)) {
                 case OK -> {
                 }
-                case BUILDER_ERROR ->
+                case BUILDER_ERROR -> {
                     /* Exit, builder has handled error reporting. */
                     throw NativeImage.showError(null, null, exitStatusCode);
+                }
                 case OUT_OF_MEMORY -> {
                     showOutOfMemoryWarning();
                     throw NativeImage.showError(null, null, exitStatusCode);
