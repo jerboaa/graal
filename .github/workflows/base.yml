@@ -411,9 +411,7 @@ jobs:
         path: maven-repo.tgz
     - name: Delete Local Artifacts From Cache
       shell: bash
-      run: |
-        rm -r ~/.m2/repository/io/quarkus
-        rm -r ~/.m2/repository/org/graalvm
+      run: rm -r ~/.m2/repository/io/quarkus
 
   native-tests:
     name: Q IT ${{ matrix.category }}
