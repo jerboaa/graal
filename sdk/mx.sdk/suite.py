@@ -222,7 +222,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.polyglot" : {
@@ -277,7 +277,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,SDK",
     },
@@ -289,7 +289,7 @@ suite = {
         "sdk:WORD",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
     "com.oracle.svm.core.annotate" : {
@@ -299,7 +299,7 @@ suite = {
          "org.graalvm.nativeimage",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.nativeimage.test" : {
@@ -376,7 +376,7 @@ suite = {
         "NATIVEIMAGE",
       ],
       "checkstyle" : "org.graalvm.word",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
     "org.graalvm.home.test" : {
