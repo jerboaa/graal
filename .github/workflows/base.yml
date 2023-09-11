@@ -369,19 +369,16 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
     - name: Download GraalVM Maven Repo
-      if: "!startsWith(matrix.os-name, 'windows')"
       uses: actions/download-artifact@v3
       with:
         name: org-graalvm-artefacts-${{ needs.get-test-matrix.outputs.artifacts-suffix }}
         path: .
     - name: Download GraalVM Maven Version
-      if: "!startsWith(matrix.os-name, 'windows')"
       uses: actions/download-artifact@v3
       with:
         name: mandrel-maven-version-${{ needs.get-test-matrix.outputs.artifacts-suffix }}
         path: .
     - name: Extract GraalVM Maven Repo and GraalVM Maven Version
-      if: "!startsWith(matrix.os-name, 'windows')"
       shell: bash
       run: |
         tar -xzvf graalvm-maven-artefacts.tgz -C ~
@@ -391,7 +388,6 @@ jobs:
         rm -f maven_graalvm_before_build.txt maven_graalvm_after_build.txt
         find ~/.m2/repository/org/graalvm | sort > maven_graalvm_before_build.txt
         GRAAL_MVN_ARTIFACTS_VERS=$(cat ${MANDREL_HOME}/.maven-version)
-        ls ${MANDREL_HOME}/.maven-version
         echo "Building quarkus with locally installed GraalVM maven artefacts in version: ${GRAAL_MVN_ARTIFACTS_VERS}"
         cd ${QUARKUS_PATH}
         ./mvnw -e -B --settings ${QUARKUS_PATH}/.github/mvn-settings.xml -Dquickly -Dgraal-sdk.version="${GRAAL_MVN_ARTIFACTS_VERS}"
@@ -401,8 +397,6 @@ jobs:
     - name: Tar Maven Repo
       shell: bash
       run: |
-        # Don't include locally built graal maven artefacts for native IT runs
-        rm -rf ~/.m2/repository/org/graalvm
         tar -czvf maven-repo.tgz -C ~ .m2/repository
     - name: Persist Maven Repo
       uses: actions/upload-artifact@v3
@@ -411,7 +405,9 @@ jobs:
         path: maven-repo.tgz
     - name: Delete Local Artifacts From Cache
       shell: bash
-      run: rm -r ~/.m2/repository/io/quarkus
+      run: |
+        rm -rf ~/.m2/repository/org/graalvm
+        rm -r ~/.m2/repository/io/quarkus
 
   native-tests:
     name: Q IT ${{ matrix.category }}
