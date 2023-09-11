@@ -221,7 +221,9 @@ jobs:
         ${MANDREL_HOME}/bin/native-image --version
         mv mandrel-java*-linux-amd64-*.tar.gz ${{ github.workspace }}/jdk.tgz
         rm -rf graalvm-maven-artefacts.tgz && tar -czvf graalvm-maven-artefacts.tgz -C ~ .m2/repository/org/graalvm
+        mv graalvm-maven-artefacts.tgz ${{ github.workspace }}
         rm -rf graalvm-version.tgz && tar -czvf graalvm-version.tgz -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME})/.maven-version
+        mv graalvm-version.tgz ${{ github.workspace }}
     - name: Persist Mandrel build
       if: ${{ fromJson(needs.build-vars.outputs.build-from-source) == true && needs.build-vars.outputs.distribution == 'mandrel' && inputs.builder-image == 'null'}}
       uses: actions/upload-artifact@v3
