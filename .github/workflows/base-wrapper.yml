@@ -65,7 +65,7 @@ on:
 
 jobs:
   delegate:
-    uses: graalvm/mandrel/.github/workflows/base.yml@default
+    uses: jerboaa/graal/.github/workflows/base.yml@fix_ci_graal_ce_build
     with:
       quarkus-version: ${{ github.event.inputs.quarkus-version }}
       quarkus-repo: ${{ github.event.inputs.quarkus-repo }}
