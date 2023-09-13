@@ -86,43 +86,42 @@ public class PhysicalMemory {
             throw VMError.shouldNotReachHere("Accessing the physical memory size may require allocation and synchronization");
         }
 
-        int initState = INITIALIZATION_STATE.get();
-        if (initState != INITIALIZED) {
-            if (initState == INITIALIZING) {
-                /*
-                 * Recursive initializations need to wait for the one initializing thread to
-                 * finish so as to get correct reads of the cachedSize value.
-                 */
-                try {
-                    boolean expired = !CACHED_SIZE_AVAIL_LATCH.await(1L, TimeUnit.SECONDS);
-                    if (expired) {
-                        throw new InternalError("expired latch!");
-                    }
-                    VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected chached size to be set");
-                    return cachedSize;
-                } catch (InterruptedException e) {
-                    throw VMError.shouldNotReachHere("Interrupt on countdown latch!");
+        if (INITIALIZATION_STATE.compareAndSet(NOT_INITIALIZED, INITIALIZING)) {
+            try {
+                long memoryLimit = SubstrateOptions.MaxRAM.getValue();
+                if (memoryLimit > 0) {
+                    cachedSize = WordFactory.unsigned(memoryLimit);
+                } else {
+                    memoryLimit = Containers.memoryLimitInBytes();
+                    cachedSize = memoryLimit > 0
+                                    ? WordFactory.unsigned(memoryLimit)
+                                    : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
                 }
+                // Now that we have set the cachedSize let other threads know it's
+                // available to use.
+                CACHED_SIZE_AVAIL_LATCH.countDown();
+                INITIALIZATION_STATE.set(INITIALIZED);
+            } catch (Throwable t) {
+                INITIALIZATION_STATE.set(NOT_INITIALIZED);
             }
-            if (INITIALIZATION_STATE.compareAndSet(NOT_INITIALIZED, INITIALIZING)) {
-                try {
-                    long memoryLimit = SubstrateOptions.MaxRAM.getValue();
-                    if (memoryLimit > 0) {
-                        cachedSize = WordFactory.unsigned(memoryLimit);
-                    } else {
-                        memoryLimit = Containers.memoryLimitInBytes();
-                        cachedSize = memoryLimit > 0
-                                        ? WordFactory.unsigned(memoryLimit)
-                                        : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
-                    }
-                    // Now that we have set the cachedSize let other threads know it's
-                    // available to use.
-                    CACHED_SIZE_AVAIL_LATCH.countDown();
-                    INITIALIZATION_STATE.set(INITIALIZED);
-                } catch (Throwable t) {
-                    INITIALIZATION_STATE.set(NOT_INITIALIZED);
+        } else if (INITIALIZATION_STATE.get() == INITIALIZING) {
+            /*
+             * Recursive initializations need to wait for the one initializing thread to
+             * finish so as to get correct reads of the cachedSize value.
+             */
+            try {
+                boolean expired = !CACHED_SIZE_AVAIL_LATCH.await(1L, TimeUnit.SECONDS);
+                if (expired) {
+                    throw new InternalError("expired latch!");
                 }
+                VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected chached size to be set");
+                return cachedSize;
+            } catch (InterruptedException e) {
+                throw VMError.shouldNotReachHere("Interrupt on countdown latch!");
             }
+        } else {
+            VMError.guarantee(INITIALIZATION_STATE.get() == INITIALIZED, "Expected initialization state to be initialized");
+            VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected chached size to be set");
         }
 
         return cachedSize;
