@@ -58,20 +58,16 @@ public class PhysicalMemory {
     }
 
     private static final CountDownLatch CACHED_SIZE_AVAIL_LATCH = new CountDownLatch(1);
-    private static final AtomicInteger INITIALIZING = new AtomicInteger(0);
+    private static final AtomicInteger INITIALIZATION_STATE = new AtomicInteger(0);
     private static final UnsignedWord UNSET_SENTINEL = UnsignedUtils.MAX_VALUE;
     private static UnsignedWord cachedSize = UNSET_SENTINEL;
 
-    public static boolean isInitialized() {
-        return INITIALIZING.get() > 1;
-    }
+    private static final int NOT_INITIALIZED = 0;
+    private static final int INITIALIZING = 1;
+    private static final int INITIALIZED = 2;
 
-    /**
-     *
-     * @return {@code true} when PhycialMemory.size() is still initializing
-     */
-    private static boolean isInitializing() {
-        return INITIALIZING.get() == 1;
+    public static boolean isInitialized() {
+        return INITIALIZATION_STATE.get() == INITIALIZED;
     }
 
     /**
@@ -90,26 +86,25 @@ public class PhysicalMemory {
             throw VMError.shouldNotReachHere("Accessing the physical memory size may require allocation and synchronization");
         }
 
-        synchronized (INITIALIZING) {
-            if (!isInitialized()) {
-                VMError.guarantee(INITIALIZING.get() <= 1, "Must not initialize twice");
-                if (isInitializing()) {
-                    /*
-                     * Recursive initializations need to wait for the one initializing thread to
-                     * finish so as to get correct reads of the cachedSize value.
-                     */
-                    try {
-                        boolean expired = !CACHED_SIZE_AVAIL_LATCH.await(1L, TimeUnit.SECONDS);
-                        if (expired) {
-                            throw new InternalError("expired latch!");
-                        }
-                        VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected chached size to be set");
-                        return cachedSize;
-                    } catch (InterruptedException e) {
-                        throw VMError.shouldNotReachHere("Interrupt on countdown latch!");
+        int initState = INITIALIZATION_STATE.get();
+        if (initState != INITIALIZED) {
+            if (initState == INITIALIZING) {
+                /*
+                 * Recursive initializations need to wait for the one initializing thread to
+                 * finish so as to get correct reads of the cachedSize value.
+                 */
+                try {
+                    boolean expired = !CACHED_SIZE_AVAIL_LATCH.await(1L, TimeUnit.SECONDS);
+                    if (expired) {
+                        throw new InternalError("expired latch!");
                     }
+                    VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected chached size to be set");
+                    return cachedSize;
+                } catch (InterruptedException e) {
+                    throw VMError.shouldNotReachHere("Interrupt on countdown latch!");
                 }
-                INITIALIZING.incrementAndGet();
+            }
+            if (INITIALIZATION_STATE.compareAndSet(NOT_INITIALIZED, INITIALIZING)) {
                 try {
                     long memoryLimit = SubstrateOptions.MaxRAM.getValue();
                     if (memoryLimit > 0) {
@@ -123,8 +118,9 @@ public class PhysicalMemory {
                     // Now that we have set the cachedSize let other threads know it's
                     // available to use.
                     CACHED_SIZE_AVAIL_LATCH.countDown();
-                } finally {
-                    INITIALIZING.incrementAndGet();
+                    INITIALIZATION_STATE.set(INITIALIZED);
+                } catch (Throwable t) {
+                    INITIALIZATION_STATE.set(NOT_INITIALIZED);
                 }
             }
         }
