@@ -4,8 +4,8 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "23.0.2.0",
-  "release" : True,
+  "version" : "23.0.2.1",
+  "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
     "name" : "GraalVM Development",
@@ -1526,6 +1526,11 @@ suite = {
       "requires" : [
         "jdk.unsupported",
       ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.vm.annotation",
+        ]
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
       "workingSets" : "Graal,Test",
