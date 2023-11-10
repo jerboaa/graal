@@ -26,7 +26,6 @@ package com.oracle.svm.core.windows;
 
 import java.io.FileDescriptor;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.jdk.WindowsExtNetHelper;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
@@ -56,7 +56,7 @@ import com.oracle.svm.core.windows.headers.WinSock;
 class WindowsNativeLibraryFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+        if (WindowsExtNetHelper.isExtendedNetSupported()) {
             NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
         }
     }
@@ -100,7 +100,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         } else {
             NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
         }
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+        if (WindowsExtNetHelper.isExtendedNetSupported()) {
             NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
             System.loadLibrary("extnet");
         }
