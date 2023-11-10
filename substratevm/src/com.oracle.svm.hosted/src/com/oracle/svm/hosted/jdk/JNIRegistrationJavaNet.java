@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.jdk.WindowsExtNetHelper;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
@@ -74,10 +75,10 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
             }
         }
 
-        if (this.hasPlatformSocketOptions && (isPosix() || JavaVersionUtil.JAVA_SPEC >= 19)) {
+        if (this.hasPlatformSocketOptions && (isPosix() || WindowsExtNetHelper.isExtendedNetSupported())) {
             /*
              * The libextnet was actually introduced in Java 9, but the support for Linux, Darwin
-             * and Windows was added later in Java 10, Java 11 and Java 19 respectively.
+             * and Windows was added later in Java 10, Java 11 and Java 17 respectively.
              */
             rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "sun.net.ext.ExtendedSocketOptions");
         }
@@ -158,7 +159,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                                 method(a, "java.net.PlainSocketImpl", "localAddress", int.class, clazz(a, "java.net.InetAddressContainer")));
             }
         }
-        if (this.hasPlatformSocketOptions && (isPosix() || JavaVersionUtil.JAVA_SPEC >= 19)) {
+        if (this.hasPlatformSocketOptions && (isPosix() || WindowsExtNetHelper.isExtendedNetSupported())) {
             /* Support for the libextnet. */
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
                             method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
