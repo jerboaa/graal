@@ -222,8 +222,8 @@ public class JfrThreadLocal implements ThreadListener {
      * This method excludes/includes a thread from JFR (emitting events and sampling). At the
      * moment, only the current thread may be excluded/included. See GR-44616.
      */
-    public void setExcluded(Thread thread, boolean excluded) {
-        if (thread == null || !thread.equals(Thread.currentThread())) {
+    public static void setExcluded(Thread thread, boolean excluded) {
+        if (thread == null || thread != JavaThreads.getCurrentThreadOrNull()) {
             return;
         }
         IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
@@ -241,18 +241,18 @@ public class JfrThreadLocal implements ThreadListener {
      * See {@link PlatformThreads#ensureCurrentAssigned(String, ThreadGroup, boolean)} where a
      * {@link Thread} object must be created before it can be assigned to the current thread. This
      * may happen during shutdown in {@link JavaMainWrapper}. Therefore, this method must account
-     * for the case where {@link Thread#currentThread()} returns null.
+     * for the case where {@link JavaThreads#getCurrentThreadOrNull()} returns null.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isCurrentThreadExcluded() {
-        if (Thread.currentThread() == null) {
+    public static boolean isThreadExcluded(Thread thread) {
+        if (thread == null) {
             return true;
         }
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
     }
 
-    public Target_jdk_jfr_internal_EventWriter getEventWriter() {
+    public static Target_jdk_jfr_internal_EventWriter getEventWriter() {
         return javaEventWriter.get();
     }
 
@@ -269,7 +269,7 @@ public class JfrThreadLocal implements ThreadListener {
             throw new OutOfMemoryError("OOME for thread local buffer");
         }
 
-        Target_jdk_jfr_internal_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isCurrentThreadExcluded());
+        Target_jdk_jfr_internal_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isThreadExcluded(JavaThreads.getCurrentThreadOrNull()));
         javaEventWriter.set(result);
         return result;
     }
