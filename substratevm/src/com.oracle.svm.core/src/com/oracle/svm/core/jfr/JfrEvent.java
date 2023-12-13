@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.thread.JavaThreads;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -101,6 +102,6 @@ public final class JfrEvent {
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     private boolean shouldEmit0() {
-        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this) && !SubstrateJVM.get().isCurrentThreadExcluded();
+        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this) && !JfrThreadLocal.isThreadExcluded(JavaThreads.getCurrentThreadOrNull());
     }
 }
