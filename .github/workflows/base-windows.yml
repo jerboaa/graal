@@ -179,7 +179,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: '3.10'
     - name: Checkout MX
       if: fromJson(needs.build-vars.outputs.build-from-source) == true && needs.build-vars.outputs.distribution == 'mandrel' #&& inputs.builder-image == 'null'
       run: |
@@ -256,7 +256,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: '3.10'
     - name: Checkout MX
       if: fromJson(needs.build-vars.outputs.build-from-source) == true && needs.build-vars.outputs.distribution == 'graalvm' #&& inputs.builder-image == 'null'
       run: |
