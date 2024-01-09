@@ -68,7 +68,7 @@ on:
 
 jobs:
   delegate:
-    uses: graalvm/mandrel/.github/workflows/base-windows.yml@default
+    uses: jerboaa/mandrel/.github/workflows/base-windows.yml@use_python_3.10
     with:
       quarkus-version: ${{ github.event.inputs.quarkus-version }}
       quarkus-repo: ${{ github.event.inputs.quarkus-repo }}
