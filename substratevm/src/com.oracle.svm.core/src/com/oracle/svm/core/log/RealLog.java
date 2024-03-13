@@ -87,6 +87,14 @@ public class RealLog extends Log {
         return this;
     }
 
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log string(String value, int maxLen) {
+        rawString(value, maxLen);
+        return this;
+    }
+
     private static final char[] NULL_CHARS = "null".toCharArray();
 
     @Override
@@ -292,6 +300,12 @@ public class RealLog extends Log {
     }
 
     @Override
+    public Log signed(long value, int fill, int align) {
+        number(value, 10, true, fill, align);
+        return this;
+    }
+
+    @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(WordBase value) {
         number(value.rawValue(), 10, false);
@@ -371,6 +385,12 @@ public class RealLog extends Log {
             }
         }
         return this;
+    }
+
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log rational(UnsignedWord numerator, long denominator, long decimals) {
+        return rational(numerator.rawValue(), denominator, decimals);
     }
 
     @Override
@@ -560,13 +580,19 @@ public class RealLog extends Log {
     }
 
     @Override
-    @NeverInline("Logging is always slow-path code")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hexdump(PointerBase from, int wordSize, int numWords) {
+        return hexdump(from, wordSize, numWords, 16);
+    }
+
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
         Pointer base = WordFactory.pointer(from.rawValue());
         int sanitizedWordsize = wordSize > 0 ? Integer.highestOneBit(Math.min(wordSize, 8)) : 2;
         for (int offset = 0; offset < sanitizedWordsize * numWords; offset += sanitizedWordsize) {
-            if (offset % 16 == 0) {
+            if (offset % bytesPerLine == 0) {
                 zhex(base.add(offset));
                 string(":");
             }
@@ -585,7 +611,7 @@ public class RealLog extends Log {
                     zhex(base.readLong(offset));
                     break;
             }
-            if ((offset + sanitizedWordsize) % 16 == 0 && (offset + sanitizedWordsize) < sanitizedWordsize * numWords) {
+            if ((offset + sanitizedWordsize) % bytesPerLine == 0 && (offset + sanitizedWordsize) < sanitizedWordsize * numWords) {
                 newline();
             }
         }
@@ -608,31 +634,41 @@ public class RealLog extends Log {
             return this;
         }
 
-        /*
-         * We do not want to call getMessage(), since it can be overridden by subclasses of
-         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
-         * is better than printing nothing.
-         */
-        String detailMessage = JDKUtils.getRawMessage(t);
-        StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
+        Throwable cur = t;
+        int maxCauses = 25;
+        for (int i = 0; i < maxCauses && cur != null; i++) {
+            if (i > 0) {
+                newline().string("Caused by: ");
+            }
 
-        string(t.getClass().getName()).string(": ").string(detailMessage);
-        if (stackTrace != null) {
-            int i;
-            for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
-                StackTraceElement element = stackTrace[i];
-                if (element != null) {
-                    newline();
-                    string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
-                    string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+            /*
+             * We do not want to call getMessage(), since it can be overridden by subclasses of
+             * Throwable. So we access the raw detailMessage directly from the field in Throwable.
+             * That is better than printing nothing.
+             */
+            String detailMessage = JDKUtils.getRawMessage(cur);
+            StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(cur);
+
+            string(cur.getClass().getName()).string(": ").string(detailMessage);
+            if (stackTrace != null) {
+                int j;
+                for (j = 0; j < stackTrace.length && j < maxFrames; j++) {
+                    StackTraceElement element = stackTrace[j];
+                    if (element != null) {
+                        newline();
+                        string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
+                        string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+                    }
+                }
+                int remaining = stackTrace.length - j;
+                if (remaining > 0) {
+                    newline().string("    ... ").unsigned(remaining).string(" more");
                 }
             }
-            int remaining = stackTrace.length - i;
-            if (remaining > 0) {
-                newline().string("    ... ").unsigned(remaining).string(" more");
-            }
+
+            cur = JDKUtils.getRawCause(cur);
         }
-        newline();
+
         return this;
     }
 }

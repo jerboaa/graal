@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.test;
+package org.graalvm.compiler.replacements.test;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.junit.Test;
 
-public class CompareZeroExtendWithConstantTest extends GraalCompilerTest {
+public class HotSpotReflectionGetCallerClassTest extends MethodSubstitutionTest {
+    @Test
+    public void regressionTest() throws Exception {
+        test("getInstance");
+    }
 
-    public static byte[] a = {};
-
-    public static void snippet01() {
-        for (byte b : a) {
-            char c = (char) b;
-            GraalDirectives.blackhole(c);
-            if ((short) c != -19704) {
-                GraalDirectives.controlFlowAnchor();
+    // Replicates the code pattern from sun.net.ext.ExtendedSocketOptions.getInstance
+    // while avoiding a dependency on that class.
+    public static HotSpotReflectionGetCallerClassTest getInstance() {
+        HotSpotReflectionGetCallerClassTest ext = instance;
+        if (ext != null) {
+            return ext;
+        }
+        try {
+            Class.forName("org.graalvm.compiler.replacements.test.HotSpotReflectionGetCallerClassTest");
+            ext = instance;
+        } catch (ClassNotFoundException e) {
+            synchronized (HotSpotReflectionGetCallerClassTest.class) {
+                ext = instance;
+                if (ext != null) {
+                    return ext;
+                }
+                ext = instance = new HotSpotReflectionGetCallerClassTest();
             }
         }
+        return ext;
     }
 
-    @Test
-    public void testSnippet01() {
-        test("snippet01");
-    }
-
-    public static boolean snippet02(boolean p0, long p1) {
-        boolean var0 = p0;
-        byte b = (byte) p1;
-        for (long i = 245799965; i >= 245797839; i = 3) {
-            b = (byte) Character.toUpperCase((char) b);
-        }
-        return var0;
-    }
-
-    @Test
-    public void testSnippet02() {
-        test("snippet02", true, 53069L);
-    }
+    private static HotSpotReflectionGetCallerClassTest instance;
 }
