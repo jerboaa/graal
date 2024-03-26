@@ -295,6 +295,9 @@ final class Target_java_lang_Throwable {
     @Alias @RecomputeFieldValue(kind = Reset)//
     private Object backtrace;
 
+    @Alias//
+    Throwable cause;
+
     @Alias @RecomputeFieldValue(kind = Reset)//
     StackTraceElement[] stackTrace;
 
@@ -730,6 +733,19 @@ final class Target_java_lang_Compiler {
 
 @TargetClass(java.lang.NullPointerException.class)
 final class Target_java_lang_NullPointerException {
+
+    /**
+     * {@link NullPointerException} overrides {@link Throwable#fillInStackTrace()} with a
+     * {@code synchronized} method which is not permitted in a {@code VMOperation}.
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    Target_java_lang_Throwable fillInStackTrace() {
+        Target_java_lang_Throwable t = SubstrateUtil.cast(this, Target_java_lang_Throwable.class);
+        t.stackTrace = JavaThreads.getStackTrace(true, Thread.currentThread());
+        return t;
+    }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
