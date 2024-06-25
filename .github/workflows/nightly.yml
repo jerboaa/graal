@@ -37,7 +37,7 @@ jobs:
     uses: ./.github/workflows/base.yml
     with:
       quarkus-version: "main"
-      version: "graal/master"
+      version: "mandrel/24.1"
       build-type: "graal-source"
       jdk: "latest/ea"
       build-stats-tag: "gha-linux-graal-qmain-glatest-jdk23ea"
@@ -48,7 +48,7 @@ jobs:
     uses: ./.github/workflows/base.yml
     with:
       quarkus-version: "main"
-      version: "graal/master"
+      version: "mandrel/24.1"
       jdk: "23/ea"
       issue-number: "742"
       issue-repo: "graalvm/mandrel"
@@ -62,7 +62,7 @@ jobs:
     uses: ./.github/workflows/base-windows.yml
     with:
       quarkus-version: "main"
-      version: "graal/master"
+      version: "mandrel/24.1"
       issue-number: "743"
       issue-repo: "graalvm/mandrel"
       mandrel-it-issue-number: "243"
