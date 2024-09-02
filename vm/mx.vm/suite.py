@@ -1,6 +1,6 @@
 suite = {
     "name": "vm",
-    "version" : "23.1.4.1",
+    "version" : "23.1.5.0",
     "mxversion": "6.41.0",
     "release" : False,
     "groupId" : "org.graalvm",
