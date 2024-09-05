@@ -303,7 +303,6 @@ public class NativeImage {
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
     private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
     private final LinkedHashSet<String> limitModules = new LinkedHashSet<>();
-    private final LinkedHashSet<String> enableNativeAccessModules = new LinkedHashSet<>(ModuleSupport.SYSTEM_MODULES);
 
     private long imageBuilderPid = -1;
 
@@ -316,6 +315,7 @@ public class NativeImage {
          * of com.oracle.svm.util.ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM environment variable use.
          */
         private static final Method isModulePathBuild = ReflectionUtil.lookupMethod(ModuleSupport.class, "isModulePathBuild");
+        private final LinkedHashSet<String> enableNativeAccessModules = new LinkedHashSet<>(ModuleSupport.SYSTEM_MODULES);
 
         protected boolean modulePathBuild;
         String imageBuilderModeEnforcer;
@@ -615,6 +615,17 @@ public class NativeImage {
          */
         public List<Path> getBuilderUpgradeModulePath() {
             return libJvmciDir != null ? getJars(libJvmciDir, "graal", "graal-management") : Collections.emptyList();
+        }
+
+        public Set<String> getEnableNativeAccessModules() {
+            if (libJvmciDir == null) {
+                return enableNativeAccessModules;
+            }
+            enableNativeAccessModules.removeIf(a -> {
+                return a.equals("com.oracle.svm.svm_enterprise") ||
+                                a.equals("com.oracle.graal.graal_enterprise");
+            });
+            return enableNativeAccessModules;
         }
 
         /**
@@ -1324,8 +1335,9 @@ public class NativeImage {
         if (config.modulePathBuild && !finalImageClasspath.isEmpty()) {
             imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
         }
-        assert !enableNativeAccessModules.isEmpty();
-        imageBuilderJavaArgs.add("--enable-native-access=" + String.join(",", enableNativeAccessModules));
+        Set<String> nativeAccessMods = config.getEnableNativeAccessModules();
+        assert !nativeAccessMods.isEmpty();
+        imageBuilderJavaArgs.add("--enable-native-access=" + String.join(",", nativeAccessMods));
 
         boolean useColorfulOutput = configureBuildOutput();
 
@@ -1956,7 +1968,7 @@ public class NativeImage {
     }
 
     public void addEnableNativeAccess(String enableNativeAccessArg) {
-        enableNativeAccessModules.addAll(Arrays.asList(SubstrateUtil.split(enableNativeAccessArg, ",")));
+        config.getEnableNativeAccessModules().addAll(Arrays.asList(SubstrateUtil.split(enableNativeAccessArg, ",")));
     }
 
     void addImageBuilderClasspath(Path classpath) {
