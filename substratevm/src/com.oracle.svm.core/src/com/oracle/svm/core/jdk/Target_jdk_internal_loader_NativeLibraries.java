@@ -68,6 +68,12 @@ final class Target_jdk_internal_loader_NativeLibraries {
 
     @Delete
     private static native String findBuiltinLib(String name);
+
+    @SuppressWarnings({"static-method"})
+    @Substitute//
+    public long find(String entryName) {
+        return NativeLibrarySupport.singleton().findSymbol(entryName).rawValue();
+    }
 }
 
 @TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryImpl")
