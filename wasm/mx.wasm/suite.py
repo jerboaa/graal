@@ -42,8 +42,8 @@ suite = {
   "mxversion": "7.33.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
-  "version" : "24.2.0.1",
-  "release" : False,
+  "version" : "24.2.1.0",
+  "release" : True,
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/webassembly",
   "developer" : {
@@ -93,9 +93,6 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
     },
 
     "org.graalvm.wasm.launcher" : {
