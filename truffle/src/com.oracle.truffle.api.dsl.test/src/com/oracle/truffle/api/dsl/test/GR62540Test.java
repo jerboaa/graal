@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,21 +38,61 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.test.options;
+package com.oracle.truffle.api.dsl.test;
 
-import java.util.List;
+import static org.junit.Assert.assertEquals;
 
-public final class WasmTestOptions {
-    public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty("wasmtest.watToWasmExecutable");
-    public static final String TEST_SOURCE_PATH = System.getProperty("wasmtest.testSourcePath");
-    public static final String TEST_FILTER = System.getProperty("wasmtest.testFilter");
-    public static final List<String> DISABLED_TESTS = List.of(System.getProperty("wasmtest.disabledTests", "").split(","));
-    public static final String LOG_LEVEL = System.getProperty("wasmtest.logLevel");
-    public static final String STORE_CONSTANTS_POLICY = System.getProperty("wasmtest.storeConstantsPolicy");
-    public static final String OFFICIAL_TESTS_DIR = System.getProperty("wasmtest.officialTestsDir");
-    public static final String OFFICIAL_TESTS_CONTEXT_OPTIONS = System.getProperty("wasmtest.officialTestsContextOptions");
-    public static final boolean OFFICIAL_TESTS_RUN_ALL = Boolean.parseBoolean(System.getProperty("wasmtest.officialTestsRunAll"));
-    public static final boolean OFFICIAL_TESTS_LOG = Boolean.parseBoolean(System.getProperty("wasmtest.officialTestsLog"));
-    public static final boolean SHARED_ENGINE = Boolean.parseBoolean(System.getProperty("wasmtest.sharedEngine"));
-    public static final boolean COVERAGE_MODE = Boolean.parseBoolean(System.getProperty("wasmtest.coverageMode"));
+import org.junit.Test;
+
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.GR62540TestFactory.TestVoidSpecializationNodeGen;
+import com.oracle.truffle.api.nodes.Node;
+
+public class GR62540Test {
+
+    @Test
+    public void testFallthrough0() {
+        TestVoidSpecialization node = TestVoidSpecializationNodeGen.create();
+        node.execute(0);
+        node.execute(0); // not failing
+    }
+
+    abstract static class BaseNode extends Node {
+
+        abstract Object execute(int i);
+
+        void executeVoid(int i) {
+            execute(i);
+        }
+    }
+
+    @GenerateInline(false)
+    @SuppressWarnings("unused")
+    abstract static class TestVoidSpecialization extends BaseNode {
+
+        int cached = 1;
+
+        @NeverDefault
+        int incCached() {
+            return cached++;
+        }
+
+        @Specialization(guards = "i==0")
+        void s0(int i, @Cached("incCached()") int incCached) {
+            /*
+             * If cached is not 2 then executeAndSpecialize was called more than once.
+             */
+            assertEquals(2, cached);
+        }
+
+        @Specialization(guards = "i==1")
+        Object s1(int i) {
+            return null;
+        }
+
+    }
+
 }
