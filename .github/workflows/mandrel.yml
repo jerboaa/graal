@@ -35,7 +35,7 @@ jobs:
       repo: ${{ github.repository }}
       version: ${{ github.ref }}
       mandrel-packaging-version: "24.2"
-      jdk: "24/ga"
+      jdk: "24/ea"
   q-main-ea-win:
     name: "Q main M 24.2 windows EA"
     uses: ./.github/workflows/base-windows.yml
@@ -44,4 +44,4 @@ jobs:
       repo: ${{ github.repository }}
       version: ${{ github.ref }}
       mandrel-packaging-version: "24.2"
-      jdk: "24/ga"
+      jdk: "24/ea"
