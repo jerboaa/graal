@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+package org.graalvm.compiler.core.aarch64.test;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.junit.Test;
 
-@TargetClass(className = "jdk.jfr.internal.event.EventWriter")
-public final class Target_jdk_jfr_internal_event_EventWriter {
-    @Alias //
-    boolean excluded;
+/**
+ * Add/sub with an immediate MIN_VALUE may result in infinite recursion since MIN_VALUE < 0 and
+ * -MIN_VALUE < 0.
+ */
+public class AddSubInfiniteRecursionTest extends GraalCompilerTest {
+    public static int testAddIntMinValue(int arg) {
+        return arg + Integer.MIN_VALUE;
+    }
 
-    @Alias //
-    long threadID;
+    public static int testSubIntMinValue(int arg) {
+        return arg - Integer.MIN_VALUE;
+    }
 
-    @Alias
-    @SuppressWarnings("unused")
-    Target_jdk_jfr_internal_event_EventWriter(long committedPos, long maxPos, long threadID, boolean valid, boolean excluded) {
+    @Test
+    public void runIntMinValue() {
+        test("testAddIntMinValue", 0);
+        test("testSubIntMinValue", 0);
     }
 }
