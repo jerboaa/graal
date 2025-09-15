@@ -59,6 +59,8 @@ Name         | Description
 
 Explore practical examples, deep-dive workshops, and language-specific demos for working with GraalVM.
 
+This is a test modification!
+
 Name         | Description
 ------------ | -------------
 [GraalVM Demos][graalvm-demos] | Example applications highlighting GraalVM key features and best practices.
