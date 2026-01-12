@@ -92,7 +92,9 @@ jobs:
           cat $GITHUB_OUTPUT
   delegate:
     needs: process-inputs
-    uses: ./.github/workflows/base.yml
+    #uses: ./.github/workflows/base.yml
+    # graalvm/mandrel/.github/workflows/base.yml@default
+    uses: jerboaa/graal/.github/workflows/base.yml@arm_runner_quarkus_build
     with:
       quarkus-version: ${{ needs.process-inputs.outputs.quarkus-version }}
       quarkus-repo: ${{ needs.process-inputs.outputs.quarkus-repo }}
