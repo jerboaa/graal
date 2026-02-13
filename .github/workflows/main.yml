@@ -269,13 +269,13 @@ jobs:
     - name: Get OpenJDK with static libs
       run: |
         $wc = New-Object System.Net.WebClient
-        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/25/windows/x64/jdk/hotspot/normal/eclipse", "$Env:temp\jdk.zip")
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/25/ea/windows/x64/jdk/hotspot/normal/eclipse", "$Env:temp\jdk.zip")
         Expand-Archive "$Env:temp\jdk.zip" -DestinationPath "$Env:temp"
         Move-Item -Path "$Env:temp\jdk-*" -Destination $Env:JAVA_HOME
-        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/25/windows/x64/staticlibs/hotspot/normal/eclipse", "$Env:temp\jdk-staticlibs.zip")
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/25/ea/windows/x64/staticlibs/hotspot/normal/eclipse", "$Env:temp\jdk-staticlibs.zip")
         Expand-Archive "$Env:temp\jdk-staticlibs.zip" -DestinationPath "$Env:temp"
         Move-Item -Path "$Env:temp\jdk-*\lib\static" -Destination $Env:JAVA_HOME\lib\
-        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/25/windows/x64/jmods/hotspot/normal/eclipse", "$Env:temp\jdk-jmods.zip")
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/25/ea/windows/x64/jmods/hotspot/normal/eclipse", "$Env:temp\jdk-jmods.zip")
         Expand-Archive "$Env:temp\jdk-jmods.zip" -DestinationPath "$Env:temp"
         Move-Item -Path "$Env:temp\jdk-*\jmods" -Destination $Env:JAVA_HOME\jmods
         Remove-Item -Recurse "$Env:temp\jdk-*"
