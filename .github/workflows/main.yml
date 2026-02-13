@@ -137,11 +137,13 @@ jobs:
           # /sulong
           - env:
               JDK_VERSION: "25"
+              TOOLS_JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           # /truffle
           - env:
               JDK_VERSION: "25"
+              TOOLS_JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild,fulltest"
               PRIMARY: "truffle"
           # /vm
