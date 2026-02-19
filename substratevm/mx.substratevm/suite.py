@@ -2,8 +2,8 @@
 suite = {
     "mxversion": "7.38.0",
     "name": "substratevm",
-    "version" : "25.0.2.0",
-    "release" : True,
+    "version" : "25.0.3.0",
+    "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "groupId" : "org.graalvm.nativeimage",
@@ -294,8 +294,8 @@ suite = {
             "javaCompliance" : "17+",
             "spotbugsIgnoresGenerated" : True,
             "shadedDependencies" : [
-                "compiler:ASM_9.7.1",
-                "compiler:ASM_TREE_9.7.1",
+                "compiler:ASM_9.8",
+                "compiler:ASM_TREE_9.8",
             ],
             "class" : "ShadedLibraryProject",
             "shade" : {
@@ -400,6 +400,8 @@ suite = {
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.event",
                     "jdk.jfr.internal.jfc",
+                    "jdk.jfr.internal.settings",
+                    "jdk.jfr.internal.tracing",
                 ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
@@ -1129,6 +1131,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc",
+                    "jdk.internal.vm",
                     "sun.security.jca",
                 ],
             },
