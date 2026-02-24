@@ -24,8 +24,8 @@
 suite = {
     "mxversion": "7.46.0",
     "name": "espresso",
-    "version" : "25.0.2.0",
-    "release" : True,
+    "version" : "25.0.3.0",
+    "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
     "developer" : {
@@ -354,7 +354,7 @@ suite = {
             "javaCompliance" : "17+",
             "spotbugs" : "false",
             "shadedDependencies" : [
-                "truffle:ASM_9.7.1",
+                "truffle:ASM_9.8",
             ],
             "class" : "ShadedLibraryProject",
             "shade" : {
