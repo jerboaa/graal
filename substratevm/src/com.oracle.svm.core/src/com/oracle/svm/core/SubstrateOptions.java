@@ -210,6 +210,23 @@ public class SubstrateOptions {
         }
     };
 
+    @APIOption(name = "enable-sbom")//
+    @Option(help = "Enable adding an SBOM to the native image")//
+    public static final HostedOptionKey<String> EnableSBOM = new HostedOptionKey<>(null) {
+        @Override
+        public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (!values.containsKey(this)) {
+                return "embed:false";
+            }
+            return (String) values.get(this);
+        }
+
+        @Override
+        public String getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @APIOption(name = "target")//
     @Option(help = "Selects native-image compilation target (in <OS>-<architecture> format). Defaults to host's OS-architecture pair.")//
