@@ -591,7 +591,7 @@ suite = {
           "jdk.graal.compiler.util                   to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "jdk.graal.compiler.core.common            to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.objectfile",
           "jdk.graal.compiler.debug                  to org.graalvm.nativeimage.objectfile",
-          "jdk.graal.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
+          "jdk.graal.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.svm.niutils",
           "jdk.graal.compiler.options                to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
           "jdk.graal.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "jdk.graal.compiler.serviceprovider        to jdk.graal.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",

@@ -1324,6 +1324,18 @@ native_image = mx_sdk_vm.GraalVmJreComponent(
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
             home_finder=False,
         ),
+        mx_sdk_vm.LauncherConfig(
+            use_modules='image',
+            main_module="org.graalvm.nativeimage.svm.niutils",
+            destination="bin/<exe:native-image-utils>",
+            jar_distributions=["substratevm:SVM_SBOM_EXTRACT"],
+            main_class="com.oracle.svm.niutils.NativeImageUtils",
+            build_args=driver_build_args + svm_experimental_options([
+                '-H:+UseLibExtractSbom',
+                '-H:NativeLinkerOption=-lbfd',
+            ]),
+            home_finder=False,
+        ),
     ],
     library_configs=[
         mx_sdk_vm.LibraryConfig(
