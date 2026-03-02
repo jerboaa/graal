@@ -905,6 +905,28 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.native.extractsbom": {
+            "subDir": "src",
+            "native": "static_lib",
+            "deliverable" : "extract_sbom",
+            "os_arch": {
+                "linux": {
+                    "<others>": {
+                        "cflags": ["-g", "-Wall" ],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only supported on linux",
+                    },
+                },
+            },
+            "multitarget": {
+                "libc": ["glibc", "default"],
+            },
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.native.reporterchelper": {
             "subDir": "src",
             "native": "shared_lib",
@@ -1547,6 +1569,32 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.native-image-utils-shim": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
+            ],
+            "dependencies": [
+                "com.oracle.svm.configure",
+                "com.oracle.svm.driver",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                ]
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "21+",
+            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.truffle.tck" : {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1749,6 +1797,7 @@ suite = {
                             org.graalvm.nativeimage.agent.jvmtibase,
                             org.graalvm.nativeimage.agent.tracing,
                             org.graalvm.nativeimage.agent.diagnostics,
+                            org.graalvm.nativeimage.svm.niutils,
                             com.oracle.svm.svm_enterprise,
                             com.oracle.svm.svm_enterprise.llvm,
                             com.oracle.svm_enterprise.ml_dataset,
@@ -2083,6 +2132,7 @@ suite = {
                             "dependency:com.oracle.svm.native.libchelper/*",
                             "dependency:com.oracle.svm.native.jvm.posix/*",
                             "dependency:com.oracle.svm.native.libcontainer/*",
+                            "dependency:com.oracle.svm.native.extractsbom/*",
                         ],
                     },
                 },
@@ -2199,6 +2249,41 @@ suite = {
                   "org.graalvm.nativeimage.builder",
                 ],
             },
+            "maven": False,
+        },
+
+        "SVM_SBOM_EXTRACT": {
+            "subDir": "src",
+            "description" : "Native image utility for SBOM extraction",
+            "mainClass": "com.oracle.svm.niutils.NativeImageUtils",
+            "dependencies": [
+                "com.oracle.svm.native-image-utils-shim",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+                "SVM_DRIVER",
+                "compiler:GRAAL",
+                "sdk:NATIVEIMAGE",
+                "sdk:COLLECTIONS",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.svm.niutils",
+                "exports" : [
+                    "com.oracle.svm.niutils",
+                ],
+                "requires": [
+                  "jdk.graal.compiler",
+                  "org.graalvm.collections",
+                  "org.graalvm.nativeimage.builder",
+                  "org.graalvm.nativeimage.configure",
+                ],
+                "requiresConcealed" : {
+                    "jdk.internal.vm.ci" : [
+                        "jdk.vm.ci.meta",
+                    ],
+                },
+            },
+            # vm: included as binary, tool descriptor intentionally not copied
             "maven": False,
         },
 

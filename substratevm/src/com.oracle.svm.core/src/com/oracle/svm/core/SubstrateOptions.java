@@ -630,6 +630,10 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
+    @Option(help = "Enable linking with libextract_sbom.a")//
+    public static final HostedOptionKey<Boolean> UseLibExtractSbom = new HostedOptionKey<>(false);
+
+    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
 
