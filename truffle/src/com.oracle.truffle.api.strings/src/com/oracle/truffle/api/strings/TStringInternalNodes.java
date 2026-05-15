@@ -1497,7 +1497,10 @@ final class TStringInternalNodes {
 
         @Specialization
         static TruffleString doNonEmpty(Node node, String javaString, int charOffset, int length, final boolean copy,
-                        @Cached InlinedConditionProfile utf16CompactProfile) {
+                        @Cached InlinedConditionProfile utf16CompactProfile,
+                        @Cached InlinedConditionProfile length1Profile,
+                        @Cached InlinedConditionProfile fullLengthProfile,
+                        @Cached InlinedConditionProfile equalStrideProfile) {
             checkArrayRange(javaString.length(), charOffset, length);
             CompilerAsserts.partialEvaluationConstant(copy);
             if (length == 0) {
@@ -1509,20 +1512,21 @@ final class TStringInternalNodes {
             final int codeRange;
             final int codePointLength;
             int strideJS = TStringUnsafe.getJavaStringStride(javaString);
-            int offsetJS = charOffset << 1;
+            int offsetJS = charOffset << strideJS;
             byte[] arrayJS = TStringUnsafe.getJavaStringArray(javaString);
+            boolean fullLength = fullLengthProfile.profile(node, length == javaString.length());
             if (utf16CompactProfile.profile(node, strideJS == 0)) {
-                if (length == 1) {
+                if (length1Profile.profile(node, length == 1)) {
                     return TStringConstants.getSingleByte(Encoding.UTF_16, Byte.toUnsignedInt(arrayJS[charOffset]));
                 }
                 codeRange = TSCodeRange.markImprecise(TSCodeRange.get8Bit());
                 codePointLength = length;
             } else {
                 assert strideJS == 1;
-                if (length == 1 && TStringOps.readFromByteArray(arrayJS, 1, charOffset) <= 0xff) {
+                if (length1Profile.profile(node, length == 1 && TStringOps.readFromByteArray(arrayJS, 1, charOffset) <= 0xff)) {
                     return TStringConstants.getSingleByte(Encoding.UTF_16, TStringOps.readFromByteArray(arrayJS, 1, charOffset));
                 }
-                if (TStringUnsafe.COMPACT_STRINGS_ENABLED && length == javaString.length()) {
+                if (TStringUnsafe.COMPACT_STRINGS_ENABLED && fullLength) {
                     codePointLength = -1;
                     codeRange = TSCodeRange.markImprecise(TSCodeRange.getBrokenMultiByte());
                 } else {
@@ -1531,12 +1535,11 @@ final class TStringInternalNodes {
                     codeRange = StringAttributes.getCodeRange(attrs);
                 }
             }
-            if (TStringUnsafe.COMPACT_STRINGS_ENABLED && (!copy || length == javaString.length())) {
-                stride = strideJS;
+            stride = Stride.fromCodeRangeUTF16AllowImprecise(codeRange);
+            if (TStringUnsafe.COMPACT_STRINGS_ENABLED && (fullLength || !copy && equalStrideProfile.profile(node, stride == strideJS))) {
                 offset = offsetJS;
                 array = arrayJS;
             } else {
-                stride = Stride.fromCodeRangeUTF16AllowImprecise(codeRange);
                 array = new byte[length << stride];
                 offset = 0;
                 if (strideJS == 1 && stride == 0) {
@@ -1760,7 +1763,7 @@ final class TStringInternalNodes {
             assert !is7Bit(codeRangeA);
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, codeRangeA, sourceEncoding);
             boolean allowUTF16Surrogates = errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8;
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             byte[] buffer = new byte[isLarge ? TStringConstants.MAX_ARRAY_SIZE : codePointLengthA * 4];
             int codeRange = TSCodeRange.getValidMultiByte();
             int length = 0;
@@ -1849,7 +1852,7 @@ final class TStringInternalNodes {
             int codePointLength = codePointLengthA;
             int length = 0;
             int codeRange = TSCodeRange.get7Bit();
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             while (it.hasNext()) {
                 int curIndex = it.getRawIndex();
                 int codepoint = iteratorNextNode.execute(node, it, decodingErrorHandler);
@@ -1942,7 +1945,7 @@ final class TStringInternalNodes {
                         @Cached @Shared("iteratorNextNode") TruffleStringIterator.InternalNextNode iteratorNextNode) {
             assert containsSurrogates(a);
             boolean allowUTF16Surrogates = isAllowUTF16SurrogatesUTF16Or32(errorHandler);
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, codeRangeA, sourceEncoding);
             byte[] buffer = new byte[codePointLengthA << 2];
             int length = 0;
@@ -1967,7 +1970,7 @@ final class TStringInternalNodes {
                         TruffleStringIterator.InternalNextNode iteratorNextNode) {
             assert TStringGuards.isValidOrBrokenMultiByte(codeRangeA);
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, codeRangeA, sourceEncoding);
-            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler);
+            DecodingErrorHandler decodingErrorHandler = getDecodingErrorHandler(errorHandler, codeRangeA);
             byte[] buffer = new byte[codePointLengthA];
             int length = 0;
             int codeRange = TSCodeRange.get7Bit();
@@ -2046,8 +2049,8 @@ final class TStringInternalNodes {
             return array;
         }
 
-        private static DecodingErrorHandler getDecodingErrorHandler(TranscodingErrorHandler errorHandler) {
-            assert errorHandler == TranscodingErrorHandler.DEFAULT || errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8;
+        private static DecodingErrorHandler getDecodingErrorHandler(TranscodingErrorHandler errorHandler, int codeRangeA) {
+            assert errorHandler == TranscodingErrorHandler.DEFAULT || errorHandler == TranscodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8 || !TSCodeRange.isBroken(codeRangeA);
             CompilerAsserts.partialEvaluationConstant(errorHandler);
             DecodingErrorHandler decodingErrorHandler = errorHandler == TranscodingErrorHandler.DEFAULT ? DecodingErrorHandler.DEFAULT_UTF8_INCOMPLETE_SEQUENCES
                             : DecodingErrorHandler.DEFAULT_KEEP_SURROGATES_IN_UTF8;
