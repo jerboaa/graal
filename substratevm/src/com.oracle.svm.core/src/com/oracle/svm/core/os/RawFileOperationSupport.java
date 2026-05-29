@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.io.File;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -33,7 +35,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -74,8 +75,8 @@ public interface RawFileOperationSupport {
     }
 
     /**
-     * Tries to allocate a platform-dependent raw string for the given path. The returned value needs
-     * to be freed manually once it is no longer needed.
+     * Tries to allocate a platform-dependent raw string for the given path. The returned value
+     * needs to be freed manually once it is no longer needed.
      *
      * @return If the allocation is successful, a non-null value is returned.
      */
@@ -106,13 +107,8 @@ public interface RawFileOperationSupport {
      * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
      *         a value where {@link #isValid} will return false.
      */
-<<<<<<< HEAD
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    RawFileDescriptor create(CCharPointer path, FileCreationMode creationMode, FileAccessMode accessMode);
-=======
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     RawFileDescriptor create(RawFilePath path, FileCreationMode creationMode, FileAccessMode accessMode);
->>>>>>> 140d1ae8ca0 (Address Windows JFR and heap dump review comments)
 
     /** Returns the path to the platform-specific temporary directory. */
     String getTempDirectory();

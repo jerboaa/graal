@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
@@ -133,11 +132,6 @@ public class JfrFeature implements InternalFeature {
                                 "This can affect the measurements because it can can make the image larger and image build time longer.");
             }
             runtimeEnabled = true;
-        }
-
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            // GR-68066 support JFR in layered images
-            return false;
         }
         return runtimeEnabled && systemSupported;
     }

@@ -38,7 +38,7 @@ import jdk.internal.misc.Signal;
 public class HeapDumpStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate && SubstrateOptions.isSignalHandlingAllowed() && !Platform.includedIn(WINDOWS_BASE.class)) {
+        if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue() && !Platform.includedIn(WINDOWS_BASE.class)) {
             DumpHeapReport.install();
         }
 

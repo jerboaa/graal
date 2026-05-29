@@ -25,6 +25,7 @@
 package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.FileDescriptor;
 
@@ -52,6 +53,7 @@ import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 public class WindowsUtils {
@@ -94,7 +96,11 @@ public class WindowsUtils {
      * Low-level output of bytes already in native memory. This method is allocation free, so that
      * it can be used, e.g., in low-level logging routines.
      */
-    public static boolean writeBytes(int handle, CCharPointer bytes, UnsignedWord length) {
+    public static boolean writeBytes(int h, CCharPointer bytes, UnsignedWord length) {
+        HANDLE handle = (HANDLE) Word.pointer(h);
+        if (handle == WinBase.INVALID_HANDLE_VALUE()) {
+            return false;
+        }
         CCharPointer curBuf = bytes;
         UnsignedWord curLen = length;
         while (curLen.notEqual(0)) {
@@ -127,8 +133,35 @@ public class WindowsUtils {
     private static long performanceFrequency = 0L;
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean writeUninterruptibly(HANDLE handle, CCharPointer bytes, UnsignedWord length) {
+        if (handle == WinBase.INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+
+        CCharPointer curBuf = bytes;
+        UnsignedWord curLen = length;
+        while (curLen.notEqual(0)) {
+            int writeSize = bytesToTransfer(curLen);
+            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
+            int ret = FileAPI.NoTransition.WriteFile(handle, curBuf, writeSize, bytesWritten, Word.nullPointer());
+            if (ret == 0) {
+                return false;
+            }
+
+            int writtenCount = bytesWritten.read();
+            if (writtenCount <= 0 || writtenCount > writeSize) {
+                return false;
+            }
+
+            curBuf = curBuf.addressOf(writtenCount);
+            curLen = curLen.subtract(writtenCount);
+        }
+        return true;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long readUninterruptibly(HANDLE handle, CCharPointer buffer, UnsignedWord length) {
-        if (handle == INVALID_HANDLE_VALUE()) {
+        if (handle == WinBase.INVALID_HANDLE_VALUE()) {
             return -1;
         }
 
@@ -144,22 +177,6 @@ public class WindowsUtils {
         return length.aboveThan(Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) length.rawValue();
     }
 
-    static boolean flush(HANDLE handle) {
-        if (handle == INVALID_HANDLE_VALUE()) {
-            return false;
-        }
-        return FileAPI.FlushFileBuffers(handle) != 0;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean flushUninterruptibly(HANDLE handle) {
-        if (handle == INVALID_HANDLE_VALUE()) {
-            return false;
-        }
-        return FileAPI.NoTransition.FlushFileBuffers(handle) != 0;
-    }
-
-    private static double nanosPerCount = 0L;
     public static final long NANOSECS_PER_SEC = 1000000000L;
     public static final int NANOSECS_PER_MILLISEC = 1000000;
 
