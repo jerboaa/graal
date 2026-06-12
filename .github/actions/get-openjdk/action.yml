@@ -1,0 +1,109 @@
+name: Get OpenJDK with static libs and jmods
+description: 'Download and setup OpenJDK with static libs and jmods'
+
+inputs:
+  java-version:
+    description: 'Java to download'
+    required: true
+    default: '25'
+  java-home:
+    description: 'Path where Java will be installed'
+    required: true
+  release-type:
+    description: 'Release type: ea or ga'
+    required: false
+    default: 'ea'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get JDK version identifier
+      id: jdk-version-id
+      shell: bash
+      run: |
+        # Determine platform parameters for API call
+        if [ "${{ runner.os }}" = "Linux" ] && [ "${{ runner.arch }}" = "X64" ]; then
+          OS="linux"
+          ARCH="x64"
+        elif [ "${{ runner.os }}" = "Linux" ] && [ "${{ runner.arch }}" = "ARM64" ]; then
+          OS="linux"
+          ARCH="aarch64"
+        elif [ "${{ runner.os }}" = "macOS" ] && [ "${{ runner.arch }}" = "ARM64" ]; then
+          OS="mac"
+          ARCH="aarch64"
+        elif [ "${{ runner.os }}" = "Windows" ]; then
+          OS="windows"
+          ARCH="x64"
+        else
+          echo "Error: Unsupported platform ${{ runner.os }}/${{ runner.arch }}"
+          exit 1
+        fi
+        API_URL="https://api.adoptium.net/v3/assets/feature_releases/${{ inputs.java-version }}/${{ inputs.release-type }}?architecture=${ARCH}&image_type=jdk&os=${OS}&vendor=eclipse&page=0&page_size=1"
+        echo "Querying API: $API_URL"
+        RESPONSE=$(curl -s -X 'GET' "$API_URL" -H 'accept: application/json')
+        VERSION=$(echo "$RESPONSE" | jq -r '.[0].version_data.openjdk_version // empty')
+        if [ -n "$VERSION" ]; then
+          echo "version-id=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found JDK version for $OS/$ARCH: $VERSION"
+        else
+          echo "Error: Could not retrieve version from API for $OS/$ARCH"
+          echo "API Response: $RESPONSE"
+          exit 1
+        fi
+    - name: Cache OpenJDK
+      id: cache-jdk
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ${{ inputs.java-home }}
+        key: openjdk-${{ runner.os }}-${{ runner.arch }}-${{ steps.jdk-version-id.outputs.version-id }}
+    - name: Get OpenJDK with static libs and jmods (Linux/macOS)
+      if: steps.cache-jdk.outputs.cache-hit != 'true' && runner.os != 'Windows'
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" = "Linux" ] && [ "${{ runner.arch }}" = "X64" ]; then
+          OS="linux"
+          ARCH="x64"
+        elif [ "${{ runner.os }}" = "Linux" ] && [ "${{ runner.arch }}" = "ARM64" ]; then
+          OS="linux"
+          ARCH="aarch64"
+        elif [ "${{ runner.os }}" = "macOS" ] && [ "${{ runner.arch }}" = "ARM64" ]; then
+          OS="mac"
+          ARCH="aarch64"
+        else
+          echo "Error: Unsupported platform ${{ runner.os }}/${{ runner.arch }}"
+          exit 1
+        fi
+        curl -sL https://api.adoptium.net/v3/binary/latest/${{ inputs.java-version }}/${{ inputs.release-type }}/${OS}/${ARCH}/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/${{ inputs.java-version }}/${{ inputs.release-type }}/${OS}/${ARCH}/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/${{ inputs.java-version }}/${{ inputs.release-type }}/${OS}/${ARCH}/jmods/hotspot/normal/eclipse -o jdk-jmods.tar.gz
+        mkdir -p ${{ inputs.java-home }}/jmods
+        tar xf jdk.tar.gz -C ${{ inputs.java-home }} --strip-components=1
+        tar xf jdk-static-libs.tar.gz -C ${{ inputs.java-home }} --strip-components=1
+        tar xf jdk-jmods.tar.gz -C ${{ inputs.java-home }}/jmods --strip-components=1
+    - name: Get OpenJDK with static libs and jmods (Windows x64)
+      if: steps.cache-jdk.outputs.cache-hit != 'true' && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $wc = New-Object System.Net.WebClient
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/${{ inputs.java-version }}/${{ inputs.release-type }}/windows/x64/jdk/hotspot/normal/eclipse", "$Env:temp\jdk.zip")
+        Expand-Archive "$Env:temp\jdk.zip" -DestinationPath "$Env:temp"
+        Move-Item -Path "$Env:temp\jdk-*" -Destination ${{ inputs.java-home }}
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/${{ inputs.java-version }}/${{ inputs.release-type }}/windows/x64/staticlibs/hotspot/normal/eclipse", "$Env:temp\jdk-staticlibs.zip")
+        Expand-Archive "$Env:temp\jdk-staticlibs.zip" -DestinationPath "$Env:temp"
+        Move-Item -Path "$Env:temp\jdk-*\lib\static" -Destination ${{ inputs.java-home }}\lib\
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/${{ inputs.java-version }}/${{ inputs.release-type }}/windows/x64/jmods/hotspot/normal/eclipse", "$Env:temp\jdk-jmods.zip")
+        Expand-Archive "$Env:temp\jdk-jmods.zip" -DestinationPath "$Env:temp"
+        Move-Item -Path "$Env:temp\jdk-*-jmods" -Destination ${{ inputs.java-home }}\jmods
+        Remove-Item -Recurse "$Env:temp\jdk-*"
+    - name: Verify OpenJDK Version (Bash)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        echo "JAVA_HOME is ${{ inputs.java-home }}"
+        ${{ inputs.java-home }}/bin/java --version
+    - name: Verify OpenJDK Version (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host "JAVA_HOME is ${{ inputs.java-home }}"
+        & ${{ inputs.java-home }}\bin\java -version
