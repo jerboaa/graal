@@ -209,6 +209,7 @@ class Tags(set):
 GraalTags = Tags([
     'helloworld',
     'debuginfotest',
+    'scismoketest',
     'native_unittests',
     'build',
     'benchmarktest',
@@ -423,6 +424,11 @@ def svm_gate_body(args, tasks):
             else:
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                     debuginfotest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
+
+    with Task('image scismoketest', tasks, tags=[GraalTags.scismoketest]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                scismoketest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
 
     with Task('image debughelpertest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
@@ -1028,6 +1034,93 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         os.environ.update({'debuginfotest_isolates': 'yes'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '--nx', '-q', '-iex', 'set pagination off', '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
 
+
+def _run_scismoke_binary(binary_path):
+    expected_output = 'PASS' + os.linesep
+    actual_output = []
+
+    def _collector(x):
+        actual_output.append(x)
+        mx.log(x)
+
+    mx.run([binary_path], out=_collector)
+
+    # Basic correctness check.
+    if ''.join(actual_output) != expected_output:
+        raise Exception('Unexpected output: ' + str(actual_output) + ' != ' + str([expected_output]))
+
+
+class _ScismokeHistogramTracker:
+    _HISTOGRAM_HEADER = 'Code Size; Nodes Parsing'
+    _HISTOGRAM_FOOTER = 'Size all methods'
+
+    def __init__(self):
+        self.in_histogram = False
+        self.has_single = False
+        self.has_multi = False
+        self.verified_histogram = False
+
+    def process_line(self, line):
+        mx.log(line)
+        # Only verify within method histogram bounds.
+        if line.startswith(self._HISTOGRAM_HEADER):
+            self.in_histogram = True
+            self.verified_histogram = True
+        elif self.in_histogram:
+            if line.startswith(self._HISTOGRAM_FOOTER):
+                self.in_histogram = False
+            else:
+                if 'singleCallsiteHelper' in line:
+                    self.has_single = True
+                if 'multiCallsiteHelper' in line:
+                    self.has_multi = True
+
+
+def _build_scismoke_image(native_image, build_args):
+    tracker = _ScismokeHistogramTracker()
+    native_image(build_args, out=tracker.process_line, err=tracker.process_line)
+    if not tracker.verified_histogram:
+        raise Exception('PrintMethodHistogram output not found in native-image build log')
+    return tracker
+
+
+def _assert_scismoke_histogram(tracker, is_sci_enabled, variant_name):
+    if not tracker.has_multi:
+        raise Exception(variant_name + ': multiCallsiteHelper should always appear in histogram')
+    if is_sci_enabled:
+        if tracker.has_single:
+            raise Exception(variant_name + ': singleCallsiteHelper should not appear in histogram with SCI enabled')
+    elif not tracker.has_single:
+        raise Exception(variant_name + ': singleCallsiteHelper should appear in histogram with SCI disabled')
+
+
+def _scismoketest(native_image, path, args):
+    mx_util.ensure_dir_exists(path)
+
+    base_args = [
+        '--native-image-info',
+        '-cp', classpath('com.oracle.svm.test.sci'),
+        '--initialize-at-build-time=com.oracle.svm.test.sci',
+        'com.oracle.svm.test.sci.SciSmoke',
+    ] + args
+
+    def build_and_run(variant_name, sci_flag, is_sci_enabled):
+        variant_path = join(path, variant_name)
+        mx_util.ensure_dir_exists(variant_path)
+        binary_path = join(variant_path, 'scismoke')
+        build_args = base_args + svm_experimental_options([
+            sci_flag,
+            '-H:+PrintMethodHistogram',
+        ]) + [
+            '-o', binary_path,
+        ]
+        mx.log(f'native_image {build_args}')
+        tracker = _build_scismoke_image(native_image, build_args)
+        _assert_scismoke_histogram(tracker, is_sci_enabled, variant_name)
+        _run_scismoke_binary(binary_path)
+
+    build_and_run('sci_on', '-H:+AOTSingleCallsiteInline', True)
+    build_and_run('sci_off', '-H:-AOTSingleCallsiteInline', False)
 
 def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
 
@@ -1696,6 +1789,25 @@ def run_helloworld_command(args, config, command_name):
         config=config,
     )
 
+@mx.command(suite_name=suite.name, command_name='scismoketest', usage_msg='[options]')
+def scismoketest(args, config=None):
+    """
+    Build and run a simple app with AOTSingleCallsiteInline enabled and disabled.
+    The output of the app is verified for correctness.
+    PrintMethodHistogram is parsed to verify the expected inlining happened.
+    """
+    parser = ArgumentParser(prog='mx scismoketest')
+    all_args = ['--output-path', '--build-only']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir()])
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = unmask(parsed.output_path)[0]
+    native_image_context_run(
+        lambda native_image, a:
+            _scismoketest(native_image, output_path, a), unmask(parsed.image_args),
+        config=config
+    )
 
 @mx.command(suite_name=suite.name, command_name='debuginfotest', usage_msg='[options]')
 def debuginfotest(args, config=None):
