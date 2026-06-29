@@ -115,7 +115,7 @@ jobs:
   q-3_x-mandrel-23_1:
     name: "Q 3.x M 23.1 JDK 21"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    uses: jerboaa/graal/.github/workflows/base.yml@ci_support_3_999_snapshot
+    uses: jerboaa/graal/.github/workflows/base.yml@ci_move_m23.1_to_q3x_test
     with:
       mandrel-version: "mandrel/23.1"
       jdk: "21/ea"
@@ -131,7 +131,7 @@ jobs:
   q-3_x-mandrel-23_1-win:
     name: "Q 3.x M 23.1 windows"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    uses: ./.github/workflows/base-windows.yml
+    uses: jerboaa/graal/.github/workflows/base-windows.yml@ci_move_m23.1_to_q3x_test
     with:
       mandrel-version: "mandrel/23.1"
       jdk: "21/ea"
