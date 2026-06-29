@@ -97,7 +97,7 @@ jobs:
 
   get-test-matrix:
     name: Resolve Quarkus version and test matrix
-    uses: ./.github/workflows/resolve-quarkus-version.yml
+    uses: jerboaa/graal/.github/workflows/resolve-quarkus-version.yml@ci_support_3_999_snapshot
     with:
       quarkus-version: ${{ inputs.quarkus-version }}
       quarkus-repo: ${{ inputs.quarkus-repo }}
