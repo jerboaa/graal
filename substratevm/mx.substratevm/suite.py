@@ -1152,6 +1152,19 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.test.sci": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "SVM",
+            ],
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "javaCompliance": "22+",
+            "spotbugs": "false",
+            "jacoco": "exclude",
+        },
+
         "com.oracle.svm.with.space.test": {
             "subDir": "src",
             "sourceDirs": ["src"],

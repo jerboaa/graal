@@ -25,6 +25,7 @@
 package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.io.FileDescriptor;
 
@@ -46,11 +47,14 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 public class WindowsUtils {
 
@@ -92,24 +96,23 @@ public class WindowsUtils {
      * Low-level output of bytes already in native memory. This method is allocation free, so that
      * it can be used, e.g., in low-level logging routines.
      */
-    public static boolean writeBytes(int handle, CCharPointer bytes, UnsignedWord length) {
+    public static boolean writeBytes(int h, CCharPointer bytes, UnsignedWord length) {
+        HANDLE handle = (HANDLE) Word.pointer(h);
+        if (handle == WinBase.INVALID_HANDLE_VALUE()) {
+            return false;
+        }
         CCharPointer curBuf = bytes;
         UnsignedWord curLen = length;
         while (curLen.notEqual(0)) {
-            if (handle == -1) {
-                return false;
-            }
-
+            int writeSize = bytesToTransfer(curLen);
             CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
-
-            int ret = FileAPI.WriteFile(handle, curBuf, curLen, bytesWritten, Word.nullPointer());
-
+            int ret = FileAPI.WriteFile(handle, curBuf, writeSize, bytesWritten, Word.nullPointer());
             if (ret == 0) {
                 return false;
             }
 
             int writtenCount = bytesWritten.read();
-            if (curLen.notEqual(writtenCount)) {
+            if (writtenCount <= 0 || writtenCount > writeSize) {
                 return false;
             }
 
@@ -128,6 +131,52 @@ public class WindowsUtils {
     }
 
     private static long performanceFrequency = 0L;
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean writeUninterruptibly(HANDLE handle, CCharPointer bytes, UnsignedWord length) {
+        if (handle == WinBase.INVALID_HANDLE_VALUE()) {
+            return false;
+        }
+
+        CCharPointer curBuf = bytes;
+        UnsignedWord curLen = length;
+        while (curLen.notEqual(0)) {
+            int writeSize = bytesToTransfer(curLen);
+            CIntPointer bytesWritten = UnsafeStackValue.get(CIntPointer.class);
+            int ret = FileAPI.NoTransition.WriteFile(handle, curBuf, writeSize, bytesWritten, Word.nullPointer());
+            if (ret == 0) {
+                return false;
+            }
+
+            int writtenCount = bytesWritten.read();
+            if (writtenCount <= 0 || writtenCount > writeSize) {
+                return false;
+            }
+
+            curBuf = curBuf.addressOf(writtenCount);
+            curLen = curLen.subtract(writtenCount);
+        }
+        return true;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long readUninterruptibly(HANDLE handle, CCharPointer buffer, UnsignedWord length) {
+        if (handle == WinBase.INVALID_HANDLE_VALUE()) {
+            return -1;
+        }
+
+        CIntPointer bytesRead = UnsafeStackValue.get(CIntPointer.class);
+        if (FileAPI.NoTransition.ReadFile(handle, buffer, bytesToTransfer(length), bytesRead, Word.nullPointer()) == 0) {
+            return -1;
+        }
+        return bytesRead.read();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int bytesToTransfer(UnsignedWord length) {
+        return length.aboveThan(Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) length.rawValue();
+    }
+
     public static final long NANOSECS_PER_SEC = 1000000000L;
     public static final int NANOSECS_PER_MILLISEC = 1000000;
 
@@ -196,5 +245,44 @@ public class WindowsUtils {
             CEntryPointActions.failFatally(WinBase.GetLastError(), dllName);
         }
         return dllHandle;
+    }
+
+    /**
+     * Returns a holder that exposes a {@linkplain WCharPointer WCharPointer} to a null-terminated
+     * wide C string created from the given Java String.
+     */
+    public static WCharPointerHolder toWideCString(String javaString) {
+        assert javaString != null;
+        return new WCharPointerHolder(javaString);
+    }
+
+    /**
+     * Holder for a null-terminated wide C string. The exposed {@linkplain WCharPointer
+     * WCharPointer} remains valid only while this holder is open.
+     */
+    public static final class WCharPointerHolder implements AutoCloseable {
+        private final PrimitiveArrayView wideCString;
+
+        private WCharPointerHolder(String javaString) {
+            /*
+             * Windows wide C strings use UTF-16LE, matching Java char[]. So we add a trailing NUL
+             * and then reinterpret the Java char[] as a wchar_t[].
+             */
+            int length = javaString.length();
+            char[] chars = new char[length + 1]; // trailing NUL
+            javaString.getChars(0, length, chars, 0);
+            wideCString = PrimitiveArrayView.createForReading(chars);
+        }
+
+        /** Returns the pointer to the null-terminated wide C string. */
+        public WCharPointer get() {
+            return wideCString.addressOfArrayElement(0);
+        }
+
+        /** Invalidates the pointer. */
+        @Override
+        public void close() {
+            wideCString.close();
+        }
     }
 }
