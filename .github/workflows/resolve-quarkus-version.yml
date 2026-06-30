@@ -72,6 +72,8 @@ jobs:
             QUARKUS_VERSION="${{ inputs.quarkus-version }}"
             if [[ "${QUARKUS_VERSION}" == "999-SNAPSHOT" ]]; then
               QUARKUS_SNAPSHOT_BRANCH="main"
+            elif [[ "${QUARKUS_VERSION}" == "3.999-SNAPSHOT" ]]; then
+              QUARKUS_SNAPSHOT_BRANCH="3.x"
             elif [[ "${QUARKUS_VERSION}" =~ ^([0-9]+\.[0-9]+)\.999-SNAPSHOT$ ]]; then
               QUARKUS_SNAPSHOT_BRANCH="${BASH_REMATCH[1]}"
             else
