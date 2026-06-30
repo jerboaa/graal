@@ -663,8 +663,10 @@ jobs:
           then
             # release branches use the branch name followed by .999-SNAPSHOT as the version
             export QUARKUS_VERSION="${QUARKUS_VERSION}.999-SNAPSHOT"
-          elif ! $(expr match "$QUARKUS_VERSION" "^.*\.\(Final\|CR\|Alpha\|Beta\)[0-9]\?$" > /dev/null)
+          elif ! $(expr match "$QUARKUS_VERSION" "^.*\(\.\(Final\|CR\|Alpha\|Beta\)[0-9]\?\|-SNAPSHOT\)$" > /dev/null)
           then
+            # QUARKUS_VERSION neither '999-SNAPSHOT', '3.999-SNAPSHOT' or
+            # '3.37' or '3.33.1.Final' etc.
             export QUARKUS_VERSION="999-SNAPSHOT"
           fi
           echo $QUARKUS_VERSION
