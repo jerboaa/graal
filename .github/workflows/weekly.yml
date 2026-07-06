@@ -72,6 +72,25 @@ jobs:
       ISSUE_BOT_TOKEN: ${{ secrets.MANDREL_BOT_TOKEN }}
       UPLOAD_COLLECTOR_TOKEN: ${{ secrets.UPLOAD_COLLECTOR_TOKEN }}
   ####
+  # Test Q 3.x and Mandrel 25.0 JDK 25
+  ####
+  q-3x-mandrel-25_0:
+    name: "Q 3.x M 25.0"
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    uses: ./.github/workflows/base.yml
+    with:
+      mandrel-version: "mandrel/25.0"
+      quarkus-version: "3.999-SNAPSHOT"
+      jdk: "25/ea"
+      issue-number: "997"
+      issue-repo: "graalvm/mandrel"
+      mandrel-it-issue-number: "419"
+      build-stats-tag: "gha-linux-mandrel-q3.x-m25_0-jdk25ea"
+      mandrel-packaging-version: "25.0"
+    secrets:
+      ISSUE_BOT_TOKEN: ${{ secrets.MANDREL_BOT_TOKEN }}
+      UPLOAD_COLLECTOR_TOKEN: ${{ secrets.UPLOAD_COLLECTOR_TOKEN }}
+  ####
   # Test Quarkus main with Mandrel for JDK 25 on AArch64
   ####
   q-main-mandrel-25_0-arm:
