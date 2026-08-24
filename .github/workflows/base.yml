@@ -86,6 +86,7 @@ env:
   QUARKUS_NATIVE_ADDITIONAL_BUILD_ARGS_APPEND: ${{ inputs.quarkus-additional-build-args-append }}
   MX_GIT_CACHE: refcache
   JAVA_HOME: ${{ github.workspace }}/openjdk
+  JAVA_HOME_21: ${{ github.workspace }}/openjdk-21
   GRAALVM_HOME: ${{ github.workspace }}/graalvm-home
   MANDREL_REPO: ${{ github.workspace }}/mandrel
   MANDREL_HOME: ${{ github.workspace }}/../mandrelvm
@@ -447,6 +448,49 @@ jobs:
         shell: bash
         run: tar -xzvf maven-repo.tgz -C ~
       # Use Java 17 for Quarkus 3.x and Java 21 for all other versions
+      - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+        with:
+          distribution: 'temurin'
+          java-version: ${{ (startsWith(inputs.quarkus-version, '3.') && endsWith(inputs.quarkus-version, '-SNAPSHOT')) && '17' || '21' }}
+      # Additionally download a JDK 21 from adoptium for use of the TLS KEM smoke test
+      # That one needs JDK 21 to compile. It sets JAVA_HOME_21 and activates a maven profile based on it.
+      - name: Install JDK 21 maven toolchain
+        shell: bash
+        id: jdk-21-toolchain
+        run: |
+          if [ "${{ runner.arch }}" == "X64" ]
+          then
+            ARCH="x64"
+          else
+            ARCH="aarch64"
+          fi
+          curl -sL ${TEMURIN_API_URL}/linux/${ARCH}/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+          mkdir -p ${JAVA_HOME_21}
+          tar xf jdk.tar.gz -C ${JAVA_HOME_21} --strip-components=1
+          echo ${JAVA_HOME_21}
+          ${JAVA_HOME_21}/bin/java --version
+      - name: Create Maven toolchains.xml
+        run: |
+          mkdir -p ~/.m2
+
+          cat > ~/.m2/toolchains.xml <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <toolchains>
+              <!-- JDK toolchains -->
+              <toolchain>
+                  <type>jdk</type>
+                  <provides>
+                      <version>21</version>
+                      <vendor>Temurin</vendor>
+                  </provides>
+                  <configuration>
+                      <jdkHome>${JAVA_HOME_21}</jdkHome>
+                  </configuration>
+              </toolchain>
+          </toolchains>
+          EOF
+
+          cat ~/.m2/toolchains.xml
       - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
           distribution: 'temurin'

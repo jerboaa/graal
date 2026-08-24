@@ -79,6 +79,7 @@ env:
   QUARKUS_NATIVE_ADDITIONAL_BUILD_ARGS_APPEND: ${{ inputs.quarkus-additional-build-args-append }}
   MX_GIT_CACHE: refcache
   JAVA_HOME: ${{ github.workspace }}\openjdk
+  JAVA_HOME_21: ${{ github.workspace }}\openjdk-21
   GRAALVM_HOME: ${{ github.workspace }}\graalvm-home
   MANDREL_REPO: ${{ github.workspace }}\mandrel
   MANDREL_HOME: ${{ github.workspace }}\..\mandrelvm
@@ -488,6 +489,50 @@ jobs:
       - name: Extract Maven Repo
         shell: bash
         run: tar -xzvf maven-repo.tgz -C ~
+      # Additionally download a JDK 21 from adoptium for use of the TLS KEM smoke test
+      # That one needs JDK 21 to compile. It sets JAVA_HOME_21 and activates a maven profile based on it.
+      - name: Install JDK 21 maven toolchain
+        shell: pwsh
+        id: jdk-21-toolchain
+        run: |
+          if ("${{ runner.arch }}" -eq "X64") {
+            $ARCH = "x64"
+          } else {
+            $ARCH = "aarch64"
+          }
+          Invoke-WebRequest `
+            -Uri "${env:TEMURIN_API_URL}/windows/${ARCH}/jdk/hotspot/normal/eclipse" `
+            -OutFile "jdk.zip"
+          New-Item -ItemType Directory -Force -Path $env:JAVA_HOME_21 | Out-Null
+          Expand-Archive -Path "jdk.zip" -DestinationPath "jdk-extracted"
+          # Remove the top-level directory from the extracted archive
+          $jdkDir = Get-ChildItem jdk-extracted | Select-Object -First 1
+          Copy-Item "$($jdkDir.FullName)\*" $env:JAVA_HOME_21 -Recurse -Force
+
+          Write-Host $env:JAVA_HOME_21
+          & "$env:JAVA_HOME_21\bin\java.exe" --version
+      - name: Create Maven toolchains.xml
+        shell: pwsh
+        run: |
+          $m2 = Join-Path $HOME ".m2"
+          New-Item -ItemType Directory -Force -Path $m2 | Out-Null
+          @"
+      <?xml version="1.0" encoding="UTF-8"?>
+      <toolchains>
+          <!-- JDK toolchains -->
+          <toolchain>
+              <type>jdk</type>
+              <provides>
+                  <version>21</version>
+                  <vendor>Temurin</vendor>
+              </provides>
+              <configuration>
+                  <jdkHome>$env:JAVA_HOME_21</jdkHome>
+              </configuration>
+          </toolchain>
+      </toolchains>
+      "@ | Set-Content (Join-Path $m2 "toolchains.xml")
+      Get-Content (Join-Path $m2 "toolchains.xml")
       # Use Java 17 for Quarkus 3.x and Java 21 for all other versions
       - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
