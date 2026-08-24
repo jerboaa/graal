@@ -144,6 +144,8 @@ jobs:
       quarkus-version: "3.27.999-SNAPSHOT"
       build-stats-tag: "gha-linux-q327-m23_1-jdk21ea"
       mandrel-packaging-version: "23.1"
+      # These tests depend on an old keycloak container which runs afoul of an old JDK cgroups bug
+      excluded-native-test-modules: "oidc-client,smallrye-jwt-token-propagation,smallrye-graphql-client-keycloak"
     secrets:
       ISSUE_BOT_TOKEN: ${{ secrets.MANDREL_BOT_TOKEN }}
       UPLOAD_COLLECTOR_TOKEN: ${{ secrets.UPLOAD_COLLECTOR_TOKEN }}
