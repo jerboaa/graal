@@ -405,7 +405,7 @@ class Report implements Runnable {
 							"Z [ERROR] Failures",
 							"Z [ERROR] Tests run:");
 		if (!fullContent.isEmpty()) {
-			sb.append(String.format("    Filtered Logs:\n```\n%s```\n\n", fullContent));
+			sb.append(String.format("    <details><summary>Filtered Logs:</summary>\n\n    ```\n%s    ```\n\n    </details>\n\n", fullContent));
 		}
 	}
 
@@ -437,7 +437,7 @@ class Report implements Runnable {
 				while ((line = bufferedReader.readLine()) != null) {
 					lineNum++;
 					if (filters.length == 0) {
-						stringBuilder.append(line);
+						stringBuilder.append("    ").append(line);
 						stringBuilder.append(System.lineSeparator());
 					} else {
 						boolean matched = false;
@@ -453,11 +453,11 @@ class Report implements Runnable {
 								int idx = (ringPos + i) % contextLines;
 								int ctxLineNum = lineNum - contextLines + i;
 								if (ring[idx] != null && ctxLineNum > lastOutputLineNum) {
-									stringBuilder.append(ring[idx]);
+									stringBuilder.append("    ").append(ring[idx]);
 									stringBuilder.append(System.lineSeparator());
 								}
 							}
-							stringBuilder.append(line);
+							stringBuilder.append("    ").append(line);
 							stringBuilder.append(System.lineSeparator());
 							lastOutputLineNum = lineNum;
 						}
